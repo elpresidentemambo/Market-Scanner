@@ -34,6 +34,9 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 .risk-action{font-size:12px;font-weight:500}
 .calm .risk-action{color:var(--green)}.caution .risk-action{color:var(--amber)}.riskoff .risk-action{color:var(--red)}
 .pos-card{background:var(--s1);border:1px solid var(--b2);border-left:3px solid var(--blue);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.action-bar{display:flex;align-items:center;justify-content:space-between;background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.action-badge{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.08em}
+.action-reason{font-size:11px;color:var(--t3);margin-top:1px;font-family:var(--mono)}
 .pos-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .pos-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px}
 .pos-big{font-family:var(--mono);font-size:20px;font-weight:700}
@@ -123,6 +126,13 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
     <div class="risk-action" id="riskAction"></div>
   </div>
   <div class="pos-card">
+    <div class="action-bar" id="actionBar">
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--t3);text-transform:uppercase;margin-bottom:3px">XRP Action</div>
+        <div class="action-badge" id="actionBadge" style="color:var(--t2)">SCANNING...</div>
+      </div>
+      <div id="actionReason" style="font-family:var(--mono);font-size:10px;color:var(--t3);text-align:right;max-width:180px;line-height:1.4"></div>
+    </div>
     <div class="pos-top">
       <div>
         <div class="pos-lbl">XRP ★ Position</div>
@@ -151,6 +161,14 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
     </div>
   </div>
   <div class="sec-hdr">
+    <div class="sec-title">Analyst View</div>
+    <div class="sec-sub">8-factor confluence</div>
+  </div>
+  <div style="background:var(--s1);border:1px solid var(--b2);border-radius:12px;padding:14px 16px;margin-bottom:4px" id="analysisCard">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);padding:4px 0">Loading analysis...</div>
+  </div>
+
+  <div class="sec-hdr">
     <div class="sec-title">Geopolitical Barometers</div>
     <div class="sec-sub">safe-haven signals</div>
   </div>
@@ -177,12 +195,171 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 </div>
 <script>
 const ENTRY=1.3081,UNITS=14.716,INVESTED=19.56,STOP=1.11,TARGET=1.70;
+const KEY={stop:1.11,support:1.28,res1:1.32,res2:1.37,target:1.70};
+
 function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB')}
 tick();setInterval(tick,1000);
-function fmtP(p){if(p>=10000)return '$'+p.toLocaleString('en-US',{maximumFractionDigits:0});if(p>=1)return '$'+p.toFixed(2);if(p>=.01)return '$'+p.toFixed(4);return '$'+p.toFixed(6)}
+
+function fmtP(p){if(p>=10000)return'$'+p.toLocaleString('en-US',{maximumFractionDigits:0});if(p>=1)return'$'+p.toFixed(2);if(p>=.01)return'$'+p.toFixed(4);return'$'+p.toFixed(6)}
 function fmtLarge(n){if(!n)return'—';if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(1)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+n.toFixed(0)}
 function pctStr(v){return(v>=0?'+':'')+v.toFixed(2)+'%'}
 function pCol(v){return v>0?'up':v<0?'dn':'neu'}
+function avg(arr){return arr.reduce((a,b)=>a+b,0)/arr.length}
+
+// ── Technical Indicators ──
+function sma(data,period){
+  if(data.length<period)return null;
+  return data.slice(-period).reduce((a,b)=>a+b,0)/period;
+}
+function rsi(closes,period=14){
+  if(closes.length<period+1)return 50;
+  let gains=0,losses=0;
+  for(let i=closes.length-period;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    if(d>0)gains+=d; else losses-=d;
+  }
+  let ag=gains/period,al=losses/period;
+  if(al===0)return 100;
+  return 100-(100/(1+(ag/al)));
+}
+function calcATR(ohlc,period=7){
+  if(!ohlc||ohlc.length<2)return null;
+  const trs=[];
+  for(let i=1;i<ohlc.length;i++){
+    const h=ohlc[i][2],l=ohlc[i][3],pc=ohlc[i-1][4];
+    trs.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)));
+  }
+  if(trs.length<period)return avg(trs);
+  return avg(trs.slice(-period));
+}
+function getTrend(closes){
+  const c=closes.slice(-10);
+  const highs=[],lows=[];
+  for(let i=1;i<c.length-1;i++){
+    if(c[i]>c[i-1]&&c[i]>c[i+1])highs.push(c[i]);
+    if(c[i]<c[i-1]&&c[i]<c[i+1])lows.push(c[i]);
+  }
+  if(highs.length>=2&&lows.length>=2){
+    if(highs[highs.length-1]>highs[highs.length-2]&&lows[lows.length-1]>lows[lows.length-2])return'up';
+    if(highs[highs.length-1]<highs[highs.length-2]&&lows[lows.length-1]<lows[lows.length-2])return'down';
+  }
+  return'side';
+}
+
+// ── Core Analysis Engine ──
+function runAnalysis(xrpHist,btcHist,ohlcData,riskMode,price,xrpChange){
+  const closes=xrpHist.prices.map(p=>p[1]);
+  const vols=xrpHist.total_volumes.map(v=>v[1]);
+  const btcCloses=btcHist.prices.map(p=>p[1]);
+
+  let score=0;
+  const signals=[];
+
+  // 1. Moving averages
+  const ma7=sma(closes,7),ma20=sma(closes,20);
+  const aboveMa7=price>ma7,aboveMa20=price>ma20;
+  if(aboveMa7&&aboveMa20){score+=2;signals.push({b:true,t:'Above 7 & 20-day MA — trend support'});}
+  else if(aboveMa7||aboveMa20){score+=1;signals.push({b:true,t:'Mixed MA signal — transitioning'});}
+  else{score-=2;signals.push({b:false,t:'Below both MAs — downtrend pressure'});}
+
+  // 2. RSI
+  const rsiVal=rsi(closes,14);
+  if(rsiVal<32){score+=2;signals.push({b:true,t:'RSI '+rsiVal.toFixed(0)+' — oversold, bounce probable'});}
+  else if(rsiVal<42){score+=1;signals.push({b:true,t:'RSI '+rsiVal.toFixed(0)+' — approaching oversold'});}
+  else if(rsiVal>68){score-=2;signals.push({b:false,t:'RSI '+rsiVal.toFixed(0)+' — overbought, caution'});}
+  else if(rsiVal>58){score-=1;signals.push({b:false,t:'RSI '+rsiVal.toFixed(0)+' — elevated, watch for fade'});}
+  else{signals.push({b:null,t:'RSI '+rsiVal.toFixed(0)+' — neutral range'});}
+
+  // 3. Market structure
+  const trend=getTrend(closes);
+  if(trend==='up'){score+=2;signals.push({b:true,t:'Higher highs & higher lows — uptrend intact'});}
+  else if(trend==='down'){score-=2;signals.push({b:false,t:'Lower highs & lower lows — downtrend'});}
+  else{signals.push({b:null,t:'Sideways structure — no clear direction'});}
+
+  // 4. Volume analysis
+  const recentVol=avg(vols.slice(-4)),prevVol=avg(vols.slice(-8,-4));
+  const priceChg4d=closes[closes.length-1]-closes[closes.length-5];
+  if(priceChg4d<0&&recentVol<prevVol*0.75){score+=1;signals.push({b:true,t:'Volume fading on sell-off — exhaustion signal'});}
+  else if(priceChg4d>0&&recentVol>prevVol*1.2){score+=1;signals.push({b:true,t:'Volume expanding on rally — conviction buying'});}
+  else if(priceChg4d<0&&recentVol>prevVol*1.3){score-=1;signals.push({b:false,t:'High volume selling — distribution signal'});}
+
+  // 5. Volatility compression (coiling)
+  const atrNow=calcATR(ohlcData,5),atrAvg=calcATR(ohlcData,12);
+  let coiling=false;
+  if(atrNow&&atrAvg&&atrNow<atrAvg*0.65){
+    coiling=true;
+    signals.push({b:null,t:'Volatility compressing — breakout setup building'});
+  }
+
+  // 6. BTC correlation
+  const btcChg3d=(btcCloses[btcCloses.length-1]-btcCloses[btcCloses.length-4])/btcCloses[btcCloses.length-4]*100;
+  const xrpChg3d=(closes[closes.length-1]-closes[closes.length-4])/closes[closes.length-4]*100;
+  if(btcChg3d>1.5&&xrpChg3d<0){score+=2;signals.push({b:true,t:'BTC recovering, XRP lagging — catch-up trade likely'});}
+  else if(btcChg3d<-2.5&&xrpChg3d>-0.5){score+=1;signals.push({b:true,t:'XRP holding while BTC falls — relative strength'});}
+  else if(btcChg3d<-2.5&&xrpChg3d<-2.5){score-=1;signals.push({b:false,t:'Correlated sell-off with BTC — wait for BTC floor'});}
+
+  // 7. Key level analysis
+  const atSupport=price>=1.24&&price<=1.31;
+  const belowSupport=price<1.24;
+  if(atSupport){score+=1;signals.push({b:true,t:'Testing $1.28 key support — historically bounces here'});}
+  if(belowSupport){score-=2;signals.push({b:false,t:'Below $1.28 support — structure broken'});}
+
+  // 8. Geopolitical overlay
+  if(riskMode==='calm'){score+=1;signals.push({b:true,t:'Risk-on environment — crypto tailwind'});}
+  else if(riskMode==='riskoff'){score-=2;signals.push({b:false,t:'Risk-off active — macro headwind for XRP'});}
+  else if(riskMode==='caution'){signals.push({b:null,t:'Mixed macro signals — monitor closely'});}
+
+  // ── Probability ──
+  const maxScore=13;
+  const bullProb=Math.max(20,Math.min(82,50+Math.round((score/maxScore)*32)));
+  const bearProb=100-bullProb;
+
+  // ── Pattern Label ──
+  let pattern;
+  if(coiling&&score>=1)pattern='COILING AT SUPPORT — BREAKOUT SETUP';
+  else if(coiling)pattern='VOLATILITY COMPRESSION — DIRECTION PENDING';
+  else if(score>=5)pattern='STRONG BULLISH CONFLUENCE';
+  else if(score>=3&&atSupport)pattern='SUPPORT BOUNCE SETUP';
+  else if(score>=2)pattern='MILD BULLISH BIAS';
+  else if(score<=-4)pattern='BEARISH PRESSURE — PROTECT CAPITAL';
+  else if(score<=-2)pattern='DOWNSIDE RISK ELEVATED';
+  else pattern='CONSOLIDATION — NO CLEAR EDGE';
+
+  // ── Next Level ──
+  let nextMove;
+  if(score>=3)nextMove=price<KEY.res1?'Likely test of $1.32 resistance':'Eyeing $1.37 then $1.70 target';
+  else if(score<=-3)nextMove=price>KEY.support?'$1.28 support likely tested':'Stop at $1.11 is next significant level';
+  else nextMove='Range play between $1.28 support and $1.32 resistance';
+
+  // ── Action & Trigger ──
+  let action,trigger,actionColor;
+  if(score>=4&&riskMode==='calm'){
+    action='HOLD / ADD';actionColor='var(--green)';
+    trigger='Strong confluence. Can add small at $1.28 with stop maintained.';
+  } else if(score>=2){
+    action='HOLD';actionColor='var(--green)';
+    trigger='Setup is building. Let it run. Review only if $1.28 breaks.';
+  } else if(score>=-1){
+    action='HOLD';actionColor='var(--amber)';
+    trigger='Neutral. Your stop & TP are doing the work. No action needed.';
+  } else if(score>=-3){
+    action='WATCH';actionColor='var(--amber)';
+    trigger='Negative signals building. Watch $1.28 on next test.';
+  } else if(riskMode==='riskoff'||price<KEY.support){
+    action='PROTECT';actionColor='var(--red)';
+    trigger='Multiple bear signals active. Review position size.';
+  } else {
+    action='CAUTION';actionColor='var(--red)';
+    trigger='Downside risk elevated. Stop at $1.11 protecting you.';
+  }
+
+  // Top 3 signals to display
+  const topSignals=signals.filter(s=>s.b!==null).slice(0,3);
+
+  return{score,bullProb,bearProb,pattern,nextMove,action,actionColor,trigger,topSignals,rsiVal,ma7,ma20,coiling};
+}
+
+// ── Position card ──
 function updatePos(price){
   const pnl=(price-ENTRY)*UNITS,pct=(price-ENTRY)/ENTRY*100,s=pnl>=0?'+':'',col=pnl>=0?'var(--green)':'var(--red)';
   document.getElementById('xrpLive').textContent=fmtP(price);
@@ -193,61 +370,117 @@ function updatePos(price){
   document.getElementById('progThumb').style.left=pR+'%';
   const pm=document.getElementById('progMid');pm.textContent=fmtP(price);pm.style.color=col;
 }
+
+function renderAnalysis(a){
+  const el=document.getElementById('analysisCard');
+  if(!a){el.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--t3);padding:4px 0">Analysis unavailable — need 30 days data</div>';return;}
+
+  // Plain English verdict
+  const verdicts={
+    'HOLD / ADD':{
+      headline:'Your position looks good. You could add more.',
+      body:'The market is calm, XRP has momentum and is in a supportive environment. Your stop is protecting your downside. This is a setup where patient traders get rewarded.',
+      emoji:'✅', col:'var(--green)'
+    },
+    'HOLD':{
+      headline:'Sit tight. Your position is fine.',
+      body:'Nothing is telling you to act right now. Your stop at $1.11 is doing its job. The next likely move is '+a.nextMove.toLowerCase()+'. Let the trade breathe.',
+      emoji:'🟡', col:'var(--amber)'
+    },
+    'WATCH':{
+      headline:'Keep an eye on this. Not danger yet.',
+      body:'A few signals are turning against you but nothing has broken. The key level to watch is $1.28 — if price holds there, you're fine. If it breaks, reassess.',
+      emoji:'👀', col:'var(--amber)'
+    },
+    'CAUTION':{
+      headline:'The market is turning against you.',
+      body:'More signals are negative than positive right now. Your stop at $1.11 is your safety net — trust it. Don't add to this position until the picture clears.',
+      emoji:'⚠️', col:'var(--amber)'
+    },
+    'PROTECT':{
+      headline:'Take action. Risk is elevated.',
+      body:'Multiple signals are pointing the same direction — down. The geopolitical environment is risk-off and momentum is against you. Your stop at $1.11 is close. Consider whether you're comfortable with that.',
+      emoji:'🛡️', col:'var(--red)'
+    },
+    'REDUCE':{
+      headline:'Consider reducing your position size.',
+      body:'This isn't a panic signal — your stop handles the worst case. But the balance of signals suggests more downside before upside. Reducing now gives you the option to re-enter cheaper.',
+      emoji:'📉', col:'var(--red)'
+    }
+  };
+
+  const v=verdicts[a.action]||verdicts['HOLD'];
+  const bullW=a.bullProb,bearW=a.bearProb;
+
+  // Why section — top 3 signals in plain English
+  const whyHTML=a.topSignals.slice(0,3).map(s=>{
+    const dot=s.b?'var(--green)':'var(--red)';
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1)">
+      <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px;background:${dot}"></div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.5">${s.t}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="font-size:28px;line-height:1">${v.emoji}</div>
+      <div>
+        <div style="font-size:15px;font-weight:500;color:${v.col};line-height:1.3">${v.headline}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px;letter-spacing:.06em">${a.action} · ${bullW}% bull probability</div>
+      </div>
+    </div>
+
+    <div style="font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--b1)">${v.body}</div>
+
+    <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Why the system thinks this</div>
+    ${whyHTML}
+
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-bottom:3px">
+          <span style="color:var(--green)">↑ ${bullW}%</span>
+          <span style="color:var(--red)">${bearW}% ↓</span>
+        </div>
+        <div style="height:4px;background:var(--s3);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${bullW}%;background:linear-gradient(90deg,var(--green) 0%,var(--amber) 60%);border-radius:2px"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Risk engine ──
 let R={gold:null,jpy:null,chf:null,btc:null};
 function updateRisk(){
   const sigs=[];
   if(R.gold!==null&&R.gold>0.5)sigs.push('Gold +'+R.gold.toFixed(1)+'%');
-  if(R.jpy!==null&&R.jpy<-0.3)sigs.push('JPY strengthening ('+R.jpy.toFixed(2)+'%)');
-  if(R.chf!==null&&R.chf<-0.3)sigs.push('CHF strengthening ('+R.chf.toFixed(2)+'%)');
-  if(R.btc!==null&&R.btc<-3)sigs.push('BTC '+R.btc.toFixed(1)+'% sell-off');
+  if(R.jpy!==null&&R.jpy<-0.3)sigs.push('JPY strengthening');
+  if(R.chf!==null&&R.chf<-0.3)sigs.push('CHF strengthening');
+  if(R.btc!==null&&R.btc<-3)sigs.push('BTC sell-off');
   const n=sigs.length,mode=n>=3?'riskoff':n>=1?'caution':'calm';
   document.getElementById('riskCard').className='risk-card '+mode;
   const labels={calm:'RISK-ON',caution:'CAUTION',riskoff:'RISK-OFF'};
   document.getElementById('riskLabel').textContent=labels[mode];
   let dots='';for(let i=0;i<4;i++)dots+=`<div class="dot${i<n?' on':''}"></div>`;
   document.getElementById('riskDots').innerHTML=dots;
-  const actions={calm:'→ Crypto & growth have tailwind. XRP environment supportive.',caution:'→ Monitor closely. Watch XRP $1.28 support level.',riskoff:'→ Defensive mode. Be cautious adding to XRP position.'};
+  const actions={calm:'→ Crypto & growth have tailwind. XRP environment supportive.',caution:'→ Monitor closely. Watch XRP $1.28 support level.',riskoff:'→ Defensive mode. Risk-off signals active.'};
   document.getElementById('riskSigs').textContent=n===0?'No safe-haven signals active. Markets calm.':'Active: '+sigs.join(' · ');
   document.getElementById('riskAction').textContent=actions[mode];
+  return mode;
 }
-async function fetchFX(){
-  const today=new Date(),prev=new Date(today);
-  prev.setDate(today.getDate()-1);
-  if(prev.getDay()===0)prev.setDate(prev.getDate()-2);
-  if(prev.getDay()===6)prev.setDate(prev.getDate()-1);
-  const prevStr=prev.toISOString().split('T')[0];
-  const [nr,pr]=await Promise.all([
-    fetch('https://api.frankfurter.app/latest?from=USD&to=JPY,CHF,GBP,EUR'),
-    fetch('https://api.frankfurter.app/'+prevStr+'?from=USD&to=JPY,CHF,GBP,EUR')
-  ]);
-  if(!nr.ok||!pr.ok)throw new Error('FX failed');
-  const now=await nr.json(),p=await pr.json(),result={};
-  for(const c of['JPY','CHF','GBP','EUR']){const cur=now.rates[c],old=p.rates[c];result[c]={price:cur,change:old?((cur-old)/old*100):0};}
-  return result;
-}
-async function fetchGold(){
-  const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true');
-  if(!r.ok)throw new Error('Gold failed');
-  const d=await r.json();return{price:d['pax-gold'].usd,change:d['pax-gold'].usd_24h_change||0};
-}
-async function fetchCrypto(){
-  const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h');
-  if(!r.ok)throw new Error('Crypto failed');
-  const raw=await r.json();
-  return raw.map(c=>({symbol:c.symbol,name:c.name,price:c.current_price,change:c.price_change_percentage_24h||0,vol:c.total_volume,mcap:c.market_cap}));
-}
+
+// ── Barometers ──
 const BAROS=[
-  {key:'gold',name:'Gold',       sub:'XAU · via PAXG/CoinGecko', fmt:'p',   riskDir:'up',   thresh:0.5,  meaning:'Rising = safe-haven demand · risk-off signal'},
-  {key:'jpy', name:'USD / JPY',  sub:'FX · Frankfurter/ECB',     fmt:'fx2', riskDir:'down', thresh:-0.3, meaning:'Falling = JPY strengthening · risk-off signal'},
-  {key:'chf', name:'USD / CHF',  sub:'FX · Frankfurter/ECB',     fmt:'fx3', riskDir:'down', thresh:-0.3, meaning:'Falling = CHF strengthening · risk-off signal'},
-  {key:'btc', name:'Bitcoin',    sub:'BTC · crypto sentiment',    fmt:'p',   riskDir:'down', thresh:-3,   meaning:'Sharp drop = broad risk-off in crypto'},
+  {key:'gold',name:'Gold',sub:'XAU · PAXG/CoinGecko',fmt:'p',riskDir:'up',thresh:0.5,meaning:'Rising = safe-haven demand · risk-off'},
+  {key:'jpy',name:'USD / JPY',sub:'FX · Frankfurter/ECB',fmt:'fx2',riskDir:'down',thresh:-0.3,meaning:'Falling = JPY strengthening · risk-off'},
+  {key:'chf',name:'USD / CHF',sub:'FX · Frankfurter/ECB',fmt:'fx3',riskDir:'down',thresh:-0.3,meaning:'Falling = CHF strengthening · risk-off'},
+  {key:'btc',name:'Bitcoin',sub:'BTC · crypto sentiment',fmt:'p',riskDir:'down',thresh:-3,meaning:'Sharp drop = broad risk-off in crypto'},
 ];
 let baroData={};
 function renderBaros(){
   const grid=document.getElementById('baroGrid');grid.innerHTML='';
   BAROS.forEach(b=>{
     const d=baroData[b.key];
-    if(!d){grid.innerHTML+='<div class="skel h56"></div>';return}
+    if(!d){grid.innerHTML+='<div class="skel h56"></div>';return;}
     const isRisk=b.riskDir==='up'?d.change>b.thresh:d.change<b.thresh;
     R[b.key]=d.change;
     const ps=b.fmt==='fx2'?d.price.toFixed(2):b.fmt==='fx3'?d.price.toFixed(3):fmtP(d.price);
@@ -256,43 +489,116 @@ function renderBaros(){
     el.onclick=()=>openBaroSheet(b,d,isRisk);
     grid.appendChild(el);
   });
-  updateRisk();
+  return updateRisk();
 }
+
+// ── Crypto scoring ──
 function score(change,vol,mcap){const m=change*.6,ratio=(vol/mcap)*100,vs=Math.min(ratio,10);let conv=0;if(change>0&&ratio>5)conv=2;else if(change<0&&ratio>5)conv=-1;return{score:parseFloat((m+vs+conv).toFixed(2)),vs:parseFloat(vs.toFixed(2)),conv,ratio:parseFloat(ratio.toFixed(3)),m:parseFloat(m.toFixed(2))}}
 function sig(s){if(s>8)return{l:'STRONG BUY',c:'bsb'};if(s>4)return{l:'BUY',c:'bb'};if(s>0)return{l:'WATCH',c:'bw'};if(s>-4)return{l:'AVOID',c:'ba'};return{l:'BEARISH',c:'bbr'}}
 function renderCrypto(coins){
   const list=document.getElementById('cryptoList');list.innerHTML='';
   document.getElementById('cryptoCount').textContent=coins.length+' coins';
   coins.forEach((c,i)=>{
-    const s=score(c.change,c.vol,c.mcap),sg=sig(s.score),isXrp=c.symbol.toUpperCase()==='XRP';
+    const s2=score(c.change,c.vol,c.mcap),sg=sig(s2.score),isXrp=c.symbol.toUpperCase()==='XRP';
     const card=document.createElement('div');card.className='coin-card'+(isXrp?' xrp':'');
-    card.innerHTML=`<div class="cl"><div class="c-rank">${i+1}</div><div><div class="c-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}${isXrp?' \u2605':''}</div><div class="c-nm">${c.name}</div></div></div><div class="cr"><div><div class="c-price">${fmtP(c.price)}</div><div class="c-chg ${pCol(c.change)}">${pctStr(c.change)}</div></div><div style="min-width:72px;text-align:right"><div class="badge ${sg.c}">${sg.l}</div><div class="sc">${s.score}</div></div></div>`;
-    card.onclick=()=>openCryptoSheet(c,s,sg);list.appendChild(card);
+    card.innerHTML=`<div class="cl"><div class="c-rank">${i+1}</div><div><div class="c-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}${isXrp?' \u2605':''}</div><div class="c-nm">${c.name}</div></div></div><div class="cr"><div><div class="c-price">${fmtP(c.price)}</div><div class="c-chg ${pCol(c.change)}">${pctStr(c.change)}</div></div><div style="min-width:72px;text-align:right"><div class="badge ${sg.c}">${sg.l}</div><div class="sc">${s2.score}</div></div></div>`;
+    card.onclick=()=>openCryptoSheet(c,s2,sg);list.appendChild(card);
   });
 }
+
+// ── Fetch functions ──
+async function fetchFX(){
+  const today=new Date(),prev=new Date(today);
+  prev.setDate(today.getDate()-1);
+  if(prev.getDay()===0)prev.setDate(prev.getDate()-2);
+  if(prev.getDay()===6)prev.setDate(prev.getDate()-1);
+  const ps=prev.toISOString().split('T')[0];
+  const[nr,pr]=await Promise.all([
+    fetch('https://api.frankfurter.app/latest?from=USD&to=JPY,CHF,GBP,EUR'),
+    fetch('https://api.frankfurter.app/'+ps+'?from=USD&to=JPY,CHF,GBP,EUR')
+  ]);
+  if(!nr.ok||!pr.ok)throw new Error('FX');
+  const now=await nr.json(),p=await pr.json(),result={};
+  for(const c of['JPY','CHF','GBP','EUR']){const cur=now.rates[c],old=p.rates[c];result[c]={price:cur,change:old?((cur-old)/old*100):0};}
+  return result;
+}
+async function fetchGold(){
+  const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true');
+  if(!r.ok)throw new Error('Gold');
+  const d=await r.json();return{price:d['pax-gold'].usd,change:d['pax-gold'].usd_24h_change||0};
+}
+async function fetchCrypto(){
+  const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h');
+  if(!r.ok)throw new Error('Crypto');
+  const raw=await r.json();
+  return raw.map(c=>({symbol:c.symbol,name:c.name,price:c.current_price,change:c.price_change_percentage_24h||0,vol:c.total_volume,mcap:c.market_cap}));
+}
+async function fetchHistory(id,days){
+  const r=await fetch(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}&interval=daily`);
+  if(!r.ok)throw new Error('History '+id);
+  return r.json();
+}
+async function fetchOHLC(id,days){
+  const r=await fetch(`https://api.coingecko.com/api/v3/coins/${id}/ohlc?vs_currency=usd&days=${days}`);
+  if(!r.ok)throw new Error('OHLC');
+  return r.json();
+}
+
+// ── Sheets ──
 function closeSheet(e){if(e.target===document.getElementById('backdrop'))document.getElementById('backdrop').classList.remove('open')}
 function openSheet(){document.getElementById('backdrop').classList.add('open')}
 function openBaroSheet(b,d,isRisk){
   const ps=b.fmt==='fx2'?d.price.toFixed(2):b.fmt==='fx3'?d.price.toFixed(3):fmtP(d.price);
-  document.getElementById('sheetBody').innerHTML=`<div class="sh-hdr"><div><div class="sh-sym">${b.name}</div><div class="sh-name">${b.sub}</div></div><div><div class="sh-price">${ps}</div><div class="sh-chg ${pCol(d.change)}">${pctStr(d.change)}</div></div></div><div class="sh-title">What this means</div><div class="sh-row"><span class="sh-rl">Interpretation</span><span class="sh-rv" style="font-size:11px;max-width:200px;text-align:right">${b.meaning}</span></div><div class="sh-row"><span class="sh-rl">Risk trigger</span><span class="sh-rv">${b.riskDir==='up'?'Change > +'+b.thresh+'%':'Change < '+b.thresh+'%'}</span></div><div class="sh-row"><span class="sh-rl">Current reading</span><span class="sh-rv ${isRisk?'dn':'up'}">${isRisk?'Risk-off signal active':'No signal'}</span></div><div class="sh-row"><span class="sh-rl">Impact on XRP</span><span class="sh-rv">${isRisk?'Negative — defensive posture':'Neutral to positive'}</span></div>`;
+  document.getElementById('sheetBody').innerHTML=`<div class="sh-hdr"><div><div class="sh-sym">${b.name}</div><div class="sh-name">${b.sub}</div></div><div><div class="sh-price">${ps}</div><div class="sh-chg ${pCol(d.change)}">${pctStr(d.change)}</div></div></div><div class="sh-title">What this means</div><div class="sh-row"><span class="sh-rl">Interpretation</span><span class="sh-rv" style="font-size:11px;max-width:190px;text-align:right">${b.meaning}</span></div><div class="sh-row"><span class="sh-rl">Risk trigger</span><span class="sh-rv">${b.riskDir==='up'?'Change > +'+b.thresh+'%':'Change < '+b.thresh+'%'}</span></div><div class="sh-row"><span class="sh-rl">Current reading</span><span class="sh-rv ${isRisk?'dn':'up'}">${isRisk?'Risk-off signal active':'No signal'}</span></div><div class="sh-row"><span class="sh-rl">XRP impact</span><span class="sh-rv">${isRisk?'Negative — defensive posture':'Neutral to positive'}</span></div>`;
   openSheet();
 }
-function openCryptoSheet(c,s,sg){
+function openCryptoSheet(c,s2,sg){
   const isXrp=c.symbol.toUpperCase()==='XRP';let xrpHTML='';
-  if(isXrp){const pnl=(c.price-ENTRY)*UNITS,pct=(c.price-ENTRY)/ENTRY*100,ps=pnl>=0?'+':'',pc=pnl>=0?'var(--green)':'var(--red)';xrpHTML=`<div class="pos-sec"><div class="sh-title">My position</div><div class="sh-row"><span class="sh-rl">Entry</span><span class="sh-rv">$1.3081</span></div><div class="sh-row"><span class="sh-rl">Units</span><span class="sh-rv">14.716 XRP</span></div><div class="sh-row"><span class="sh-rl">Invested</span><span class="sh-rv">$${INVESTED}</span></div><div class="sh-row"><span class="sh-rl">P&amp;L</span><span class="sh-rv" style="color:${pc}">${ps}$${Math.abs(pnl).toFixed(2)} (${ps}${pct.toFixed(2)}%)</span></div><div class="sh-row"><span class="sh-rl">Stop loss</span><span class="sh-rv dn">$1.11</span></div><div class="sh-row"><span class="sh-rl">Take profit</span><span class="sh-rv up">$1.70</span></div></div>`;}
-  document.getElementById('sheetBody').innerHTML=`<div class="sh-hdr"><div><div class="sh-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}</div><div class="sh-name">${c.name}</div></div><div><div class="sh-price">${fmtP(c.price)}</div><div class="sh-chg ${pCol(c.change)}">${pctStr(c.change)}</div></div></div><div class="sh-grid"><div class="sh-stat"><div class="sh-stat-l">Market Cap</div><div class="sh-stat-v">${fmtLarge(c.mcap)}</div></div><div class="sh-stat"><div class="sh-stat-l">Volume 24h</div><div class="sh-stat-v">${fmtLarge(c.vol)}</div></div><div class="sh-stat"><div class="sh-stat-l">Vol / MCap</div><div class="sh-stat-v">${s.ratio.toFixed(2)}%</div></div><div class="sh-stat"><div class="sh-stat-l">Signal</div><div class="sh-stat-v"><span class="badge ${sg.c}">${sg.l}</span></div></div></div><div class="sh-title">Score breakdown</div><div class="sh-row"><span class="sh-rl">Momentum (24h x 0.6)</span><span class="sh-rv">${s.m}</span></div><div class="sh-row"><span class="sh-rl">Volume score (cap 10)</span><span class="sh-rv">${s.vs}</span></div><div class="sh-row"><span class="sh-rl">Conviction</span><span class="sh-rv">${s.conv>0?'+'+s.conv:s.conv}</span></div><div class="sh-row tot"><span class="sh-rl">Total</span><span class="sh-rv"><span class="badge ${sg.c}">${s.score}</span></span></div>${xrpHTML}`;
+  if(isXrp){const pnl=(c.price-ENTRY)*UNITS,pct=(c.price-ENTRY)/ENTRY*100,ps=pnl>=0?'+':'',pc=pnl>=0?'var(--green)':'var(--red)';xrpHTML=`<div class="pos-sec"><div class="sh-title">My position</div><div class="sh-row"><span class="sh-rl">Entry</span><span class="sh-rv">$1.3081</span></div><div class="sh-row"><span class="sh-rl">Units</span><span class="sh-rv">14.716 XRP</span></div><div class="sh-row"><span class="sh-rl">Invested</span><span class="sh-rv">$${INVESTED}</span></div><div class="sh-row"><span class="sh-rl">P&amp;L</span><span class="sh-rv" style="color:${pc}">${ps}$${Math.abs(pnl).toFixed(2)} (${ps}${pct.toFixed(2)}%)</span></div><div class="sh-row"><span class="sh-rl">Stop</span><span class="sh-rv dn">$1.11</span></div><div class="sh-row"><span class="sh-rl">Take profit</span><span class="sh-rv up">$1.70</span></div></div>`;}
+  document.getElementById('sheetBody').innerHTML=`<div class="sh-hdr"><div><div class="sh-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}</div><div class="sh-name">${c.name}</div></div><div><div class="sh-price">${fmtP(c.price)}</div><div class="sh-chg ${pCol(c.change)}">${pctStr(c.change)}</div></div></div><div class="sh-grid"><div class="sh-stat"><div class="sh-stat-l">Market Cap</div><div class="sh-stat-v">${fmtLarge(c.mcap)}</div></div><div class="sh-stat"><div class="sh-stat-l">Volume 24h</div><div class="sh-stat-v">${fmtLarge(c.vol)}</div></div><div class="sh-stat"><div class="sh-stat-l">Vol / MCap</div><div class="sh-stat-v">${s2.ratio.toFixed(2)}%</div></div><div class="sh-stat"><div class="sh-stat-l">Signal</div><div class="sh-stat-v"><span class="badge ${sg.c}">${sg.l}</span></div></div></div><div class="sh-title">Score breakdown</div><div class="sh-row"><span class="sh-rl">Momentum (24h x 0.6)</span><span class="sh-rv">${s2.m}</span></div><div class="sh-row"><span class="sh-rl">Volume score (cap 10)</span><span class="sh-rv">${s2.vs}</span></div><div class="sh-row"><span class="sh-rl">Conviction</span><span class="sh-rv">${s2.conv>0?'+'+s2.conv:s2.conv}</span></div><div class="sh-row tot"><span class="sh-rl">Total</span><span class="sh-rv"><span class="badge ${sg.c}">${s2.score}</span></span></div>${xrpHTML}`;
   openSheet();
 }
+
+// ── Main scan ──
 async function runScan(){
   const fab=document.getElementById('fab'),status=document.getElementById('statusMsg');
-  fab.disabled=true;fab.textContent='SCANNING...';status.textContent='fetching markets...';
-  const [fxRes,goldRes,cryptoRes]=await Promise.allSettled([fetchFX(),fetchGold(),fetchCrypto()]);
+  fab.disabled=true;fab.textContent='SCANNING...';status.textContent='fetching markets + 30-day history...';
+  document.getElementById('analysisCard').innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--t3);padding:4px 0">Running analysis...</div>';
+
+  const[fxRes,goldRes,cryptoRes,xrpHistRes,btcHistRes,ohlcRes]=await Promise.allSettled([
+    fetchFX(),fetchGold(),fetchCrypto(),
+    fetchHistory('ripple',30),fetchHistory('bitcoin',30),fetchOHLC('ripple',14)
+  ]);
+
   if(fxRes.status==='fulfilled'){const fx=fxRes.value;baroData.jpy={price:fx.JPY.price,change:fx.JPY.change};baroData.chf={price:fx.CHF.price,change:fx.CHF.change};}
   if(goldRes.status==='fulfilled'){baroData.gold=goldRes.value;}
-  if(cryptoRes.status==='fulfilled'){const coins=cryptoRes.value;const xrp=coins.find(c=>c.symbol.toUpperCase()==='XRP');if(xrp)updatePos(xrp.price);const btc=coins.find(c=>c.symbol.toUpperCase()==='BTC');if(btc)baroData.btc={price:btc.price,change:btc.change};renderCrypto(coins);}
-  renderBaros();
+
+  let currentPrice=null,xrpChange=null;
+  if(cryptoRes.status==='fulfilled'){
+    const coins=cryptoRes.value;
+    const xrp=coins.find(c=>c.symbol.toUpperCase()==='XRP');
+    const btc=coins.find(c=>c.symbol.toUpperCase()==='BTC');
+    if(xrp){currentPrice=xrp.price;xrpChange=xrp.change;updatePos(xrp.price);}
+    if(btc){baroData.btc={price:btc.price,change:btc.change};}
+    renderCrypto(coins);
+  }
+
+  const riskMode=renderBaros();
+
+  // Run analysis if we have historical data
+  if(xrpHistRes.status==='fulfilled'&&btcHistRes.status==='fulfilled'&&currentPrice!==null){
+    const ohlc=ohlcRes.status==='fulfilled'?ohlcRes.value:null;
+    const analysis=runAnalysis(xrpHistRes.value,btcHistRes.value,ohlc,riskMode,currentPrice,xrpChange||0);
+    renderAnalysis(analysis);
+  } else {
+    document.getElementById('analysisCard').innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--t3);padding:4px 0">Historical data unavailable — analysis requires 30-day data</div>';
+  }
+
   const now=new Date(),parts=[];
-  if(fxRes.status==='fulfilled')parts.push('FX');if(goldRes.status==='fulfilled')parts.push('Gold');if(cryptoRes.status==='fulfilled')parts.push('Crypto');
+  if(fxRes.status==='fulfilled')parts.push('FX');
+  if(goldRes.status==='fulfilled')parts.push('Gold');
+  if(cryptoRes.status==='fulfilled')parts.push('Crypto');
+  if(xrpHistRes.status==='fulfilled')parts.push('30d history');
   status.textContent='updated '+now.toLocaleTimeString('en-GB')+' · '+parts.join(', ');
   fab.disabled=false;fab.textContent='REFRESH ALL';
 }
