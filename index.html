@@ -11,649 +11,291 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #080808;
-  --s1: #111111;
-  --s2: #1a1a1a;
-  --s3: #222222;
-  --b1: rgba(255,255,255,0.06);
-  --b2: rgba(255,255,255,0.11);
-  --b3: rgba(255,255,255,0.18);
-  --t1: #f0ede8;
-  --t2: #888888;
-  --t3: #555555;
-  --green: #4ade80;
-  --red: #f87171;
-  --amber: #fbbf24;
-  --blue: #60a5fa;
-  --mono: 'Space Mono', monospace;
-  --sans: 'DM Sans', sans-serif;
-}
+:root{--bg:#080808;--s1:#111;--s2:#1a1a1a;--s3:#222;--b1:rgba(255,255,255,.06);--b2:rgba(255,255,255,.11);--t1:#f0ede8;--t2:#888;--t3:#555;--green:#4ade80;--red:#f87171;--amber:#fbbf24;--blue:#60a5fa;--mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--sans);overscroll-behavior:none}
 body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
-
-/* ── Header ── */
 .hdr{padding:48px 18px 14px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--b1);flex-shrink:0}
 .hdr-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase}
 .hdr-clock{font-family:var(--mono);font-size:11px;color:var(--t3)}
-
-/* ── Scroll ── */
 .scroll{flex:1;overflow-y:auto;padding:14px 18px 100px;-webkit-overflow-scrolling:touch}
-
-/* ── Risk Reading ── */
-.risk-card{border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid var(--b2);transition:background .3s,border-color .3s}
-.risk-card.calm   {background:rgba(74,222,128,.07);border-color:rgba(74,222,128,.2)}
-.risk-card.caution{background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.2)}
-.risk-card.riskoff{background:rgba(248,113,113,.07);border-color:rgba(248,113,113,.2)}
-.risk-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.risk-card{border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid var(--b2);transition:background .4s,border-color .4s}
+.risk-card.calm{background:rgba(74,222,128,.07);border-color:rgba(74,222,128,.25)}
+.risk-card.caution{background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.25)}
+.risk-card.riskoff{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.25)}
+.risk-card.loading{background:var(--s1);border-color:var(--b2)}
+.risk-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
 .risk-label{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em}
-.risk-card.calm    .risk-label{color:var(--green)}
-.risk-card.caution .risk-label{color:var(--amber)}
-.risk-card.riskoff .risk-label{color:var(--red)}
-.risk-dots{display:flex;gap:4px}
+.calm .risk-label{color:var(--green)}.caution .risk-label{color:var(--amber)}.riskoff .risk-label{color:var(--red)}.loading .risk-label{color:var(--t3)}
+.risk-dots{display:flex;gap:5px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--b2)}
-.dot.on-calm   {background:var(--green)}
-.dot.on-caution{background:var(--amber)}
-.dot.on-riskoff{background:var(--red)}
-.risk-signals{font-size:12px;color:var(--t2);margin-bottom:6px;line-height:1.5}
+.calm .dot.on{background:var(--green)}.caution .dot.on{background:var(--amber)}.riskoff .dot.on{background:var(--red)}
+.risk-sigs{font-size:12px;color:var(--t2);margin-bottom:5px;line-height:1.55}
 .risk-action{font-size:12px;font-weight:500}
-.risk-card.calm    .risk-action{color:var(--green)}
-.risk-card.caution .risk-action{color:var(--amber)}
-.risk-card.riskoff .risk-action{color:var(--red)}
-
-/* ── Position Card ── */
+.calm .risk-action{color:var(--green)}.caution .risk-action{color:var(--amber)}.riskoff .risk-action{color:var(--red)}
 .pos-card{background:var(--s1);border:1px solid var(--b2);border-left:3px solid var(--blue);border-radius:12px;padding:14px 16px;margin-bottom:16px}
-.pos-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
-.pos-label{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;font-family:var(--mono)}
+.pos-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.pos-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px}
 .pos-big{font-family:var(--mono);font-size:20px;font-weight:700}
+.pos-sub{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px}
 .pos-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
-.pos-stat{background:var(--s2);border-radius:8px;padding:8px 9px}
-.pos-stat-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
-.pos-stat-val{font-family:var(--mono);font-size:12px;margin-top:3px}
-.prog-bar{height:3px;background:var(--s3);border-radius:2px;overflow:visible;position:relative;margin-bottom:4px}
-.prog-fill{position:absolute;top:0;left:0;right:0;height:100%;background:linear-gradient(90deg,var(--red) 0%,var(--amber) 40%,var(--green) 100%);border-radius:2px}
+.ps{background:var(--s2);border-radius:8px;padding:8px 9px}
+.ps-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.ps-v{font-family:var(--mono);font-size:12px;margin-top:3px}
+.prog{height:3px;background:var(--s3);border-radius:2px;overflow:visible;position:relative;margin-bottom:4px}
+.prog-fill{position:absolute;inset:0;background:linear-gradient(90deg,var(--red) 0%,var(--amber) 40%,var(--green) 100%);border-radius:2px}
 .prog-thumb{position:absolute;top:-4px;width:3px;height:11px;background:var(--t1);border-radius:2px;transform:translateX(-50%)}
-.prog-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--t3)}
-
-/* ── Section ── */
+.prog-lbls{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--t3)}
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px}
 .sec-title{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase}
 .sec-sub{font-family:var(--mono);font-size:9px;color:var(--t3)}
-
-/* ── Barometer Grid ── */
-.baro-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.baro-card{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:11px 12px;cursor:pointer}
-.baro-card:active{background:var(--s2)}
-.baro-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
-.baro-name{font-size:12px;font-weight:500;color:var(--t1)}
-.baro-signal{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px}
-.sig-warn{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.25)}
-.sig-ok  {background:rgba(74,222,128,.10);color:var(--green);border:1px solid rgba(74,222,128,.2)}
-.sig-neu {background:var(--s3);color:var(--t3);border:1px solid var(--b1)}
-.baro-price{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--t1)}
-.baro-change{font-family:var(--mono);font-size:11px;margin-top:2px}
-.baro-lbl{font-size:10px;color:var(--t3);margin-top:3px}
-
-/* ── Market Row (indices/sectors) ── */
-.mkt-list{display:flex;flex-direction:column;gap:5px}
-.mkt-row{background:var(--s1);border:1px solid var(--b1);border-radius:9px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
-.mkt-row:active{background:var(--s2)}
-.mkt-left{display:flex;align-items:center;gap:10px}
-.mkt-tag{font-family:var(--mono);font-size:9px;color:var(--t3);background:var(--s2);border:1px solid var(--b1);padding:2px 6px;border-radius:4px;min-width:32px;text-align:center}
-.mkt-name{font-size:13px;font-weight:500;color:var(--t1)}
-.mkt-sub{font-size:10px;color:var(--t3);margin-top:1px}
-.mkt-right{text-align:right}
-.mkt-price{font-family:var(--mono);font-size:13px;color:var(--t1)}
-.mkt-change{font-family:var(--mono);font-size:11px;margin-top:2px}
-
-/* ── Crypto Cards ── */
-.crypto-list{display:flex;flex-direction:column;gap:5px}
-.coin-card{background:var(--s1);border:1px solid var(--b1);border-radius:9px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.baro-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
+.baro{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:12px 13px;cursor:pointer}
+.baro:active{background:var(--s2)}
+.baro-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.baro-name{font-size:12px;font-weight:500}
+.baro-tag{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px}
+.tag-warn{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.25)}
+.tag-ok{background:rgba(74,222,128,.10);color:var(--green);border:1px solid rgba(74,222,128,.2)}
+.baro-price{font-family:var(--mono);font-size:16px;font-weight:700}
+.baro-chg{font-family:var(--mono);font-size:11px;margin-top:2px}
+.baro-src{font-size:10px;color:var(--t3);margin-top:3px}
+.coin-card{background:var(--s1);border:1px solid var(--b1);border-radius:9px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:5px}
 .coin-card:active{background:var(--s2)}
-.coin-card.xrp-card{border-color:rgba(96,165,250,.3)}
-.coin-l{display:flex;align-items:center;gap:8px}
-.coin-rank{font-family:var(--mono);font-size:10px;color:var(--t3);width:16px;flex-shrink:0}
-.coin-sym{font-family:var(--mono);font-size:13px;font-weight:700}
-.coin-nm{font-size:11px;color:var(--t3);margin-top:1px}
-.coin-r{display:flex;align-items:center;gap:8px}
-.coin-price{font-family:var(--mono);font-size:12px;color:var(--t1)}
-.coin-chg{font-family:var(--mono);font-size:10px;margin-top:2px}
-.badge{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.coin-card.xrp{border-color:rgba(96,165,250,.35)}
+.cl{display:flex;align-items:center;gap:8px}
+.cr{display:flex;align-items:center;gap:8px}
+.c-rank{font-family:var(--mono);font-size:10px;color:var(--t3);width:16px;flex-shrink:0}
+.c-sym{font-family:var(--mono);font-size:13px;font-weight:700}
+.c-nm{font-size:11px;color:var(--t3);margin-top:1px}
+.c-price{font-family:var(--mono);font-size:12px;text-align:right}
+.c-chg{font-family:var(--mono);font-size:10px;margin-top:2px;text-align:right}
+.badge{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:20px;white-space:nowrap}
 .bsb{background:rgba(74,222,128,.18);color:#4ade80;border:1px solid rgba(74,222,128,.3)}
-.bb {background:rgba(74,222,128,.10);color:#86efac;border:1px solid rgba(74,222,128,.2)}
-.bw {background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25)}
-.ba {background:rgba(248,113,113,.10);color:#fca5a5;border:1px solid rgba(248,113,113,.2)}
+.bb{background:rgba(74,222,128,.10);color:#86efac;border:1px solid rgba(74,222,128,.2)}
+.bw{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25)}
+.ba{background:rgba(248,113,113,.10);color:#fca5a5;border:1px solid rgba(248,113,113,.2)}
 .bbr{background:rgba(248,113,113,.18);color:#f87171;border:1px solid rgba(248,113,113,.3)}
-.score-lbl{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:2px;text-align:right}
-
-/* ── Skeleton ── */
+.sc{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:2px;text-align:right}
 .skel{background:var(--s1);border-radius:9px;animation:pulse 1.3s ease-in-out infinite}
-.skel.h48{height:48px}
-.skel.h60{height:60px}
+.h48{height:48px}.h56{height:56px;margin-bottom:0}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.9}}
-
-/* ── Status ── */
-.status-msg{font-family:var(--mono);font-size:9px;color:var(--t3);text-align:center;padding:10px 0 4px;letter-spacing:.04em}
-
-/* ── FAB ── */
-.fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--t1);color:var(--bg);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;padding:13px 36px;border-radius:40px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.6);z-index:40;white-space:nowrap;transition:opacity .2s}
-.fab:active{transform:translateX(-50%) scale(.97)}
-.fab:disabled{opacity:.45}
-
-/* ── Sheet ── */
+.status{font-family:var(--mono);font-size:9px;color:var(--t3);text-align:center;padding:10px 0 4px;letter-spacing:.04em}
+.fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--t1);color:var(--bg);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;padding:13px 36px;border-radius:40px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.6);z-index:40;white-space:nowrap}
+.fab:active{transform:translateX(-50%) scale(.97)}.fab:disabled{opacity:.45}
 .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;display:none;align-items:flex-end;backdrop-filter:blur(3px)}
 .backdrop.open{display:flex}
 .sheet{background:var(--s1);border-top:1px solid var(--b2);border-radius:18px 18px 0 0;width:100%;max-width:480px;margin:0 auto;padding:0 18px 44px;max-height:82vh;overflow-y:auto;animation:up .22s ease}
 @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.sheet-handle{width:32px;height:3px;background:var(--s3);border-radius:2px;margin:12px auto 18px}
+.sh-handle{width:32px;height:3px;background:var(--s3);border-radius:2px;margin:12px auto 18px}
 .sh-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
-.sh-sym{font-family:var(--mono);font-size:24px;font-weight:700}
+.sh-sym{font-family:var(--mono);font-size:22px;font-weight:700}
 .sh-name{font-size:13px;color:var(--t2);margin-top:3px}
-.sh-price{font-family:var(--mono);font-size:20px;text-align:right}
+.sh-price{font-family:var(--mono);font-size:18px;text-align:right}
 .sh-chg{font-family:var(--mono);font-size:12px;text-align:right;margin-top:3px}
 .sh-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px}
 .sh-stat{background:var(--s2);border-radius:8px;padding:10px 11px}
-.sh-stat-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
-.sh-stat-val{font-family:var(--mono);font-size:14px;margin-top:4px}
-.sh-section{margin-bottom:16px}
-.sh-sec-title{font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.sh-stat-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.sh-stat-v{font-family:var(--mono);font-size:14px;margin-top:4px}
+.sh-title{font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
 .sh-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--b1);font-size:13px}
 .sh-row:last-child{border-bottom:none}
-.sh-row-lbl{color:var(--t2)}
-.sh-row-val{font-family:var(--mono);font-size:12px}
-.sh-row.total .sh-row-lbl{color:var(--t1);font-weight:500}
+.sh-rl{color:var(--t2)}.sh-rv{font-family:var(--mono);font-size:12px}
+.sh-row.tot .sh-rl{color:var(--t1);font-weight:500}
 .pos-sec{background:var(--s2);border-radius:9px;padding:12px;margin-top:14px}
-
-.up{color:var(--green)} .dn{color:var(--red)} .neu{color:var(--t2)}
+.up{color:var(--green)}.dn{color:var(--red)}.neu{color:var(--t2)}
 </style>
 </head>
 <body>
-
 <div class="hdr">
   <div class="hdr-title">Market Scanner</div>
   <div class="hdr-clock" id="clock">--:--:--</div>
 </div>
-
 <div class="scroll">
-
-  <!-- Geopolitical Risk Reading -->
-  <div class="risk-card calm" id="riskCard">
+  <div class="risk-card loading" id="riskCard">
     <div class="risk-top">
       <div class="risk-label" id="riskLabel">SCANNING...</div>
       <div class="risk-dots" id="riskDots">
-        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
       </div>
     </div>
-    <div class="risk-signals" id="riskSignals">Fetching market data...</div>
+    <div class="risk-sigs" id="riskSigs">Fetching safe-haven signals...</div>
     <div class="risk-action" id="riskAction"></div>
   </div>
-
-  <!-- XRP Position -->
   <div class="pos-card">
-    <div class="pos-row">
+    <div class="pos-top">
       <div>
-        <div class="pos-label">XRP ★ Position</div>
+        <div class="pos-lbl">XRP ★ Position</div>
         <div class="pos-big" id="pnlVal">—</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px" id="pnlPct">entry $1.3081</div>
+        <div class="pos-sub" id="pnlPct">entry $1.3081</div>
       </div>
       <div style="text-align:right">
-        <div class="pos-label">Live Price</div>
+        <div class="pos-lbl">Live Price</div>
         <div class="pos-big" id="xrpLive">—</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px" id="xrpDist"></div>
+        <div class="pos-sub" id="xrpDist"></div>
       </div>
     </div>
     <div class="pos-grid">
-      <div class="pos-stat"><div class="pos-stat-lbl">Stop</div><div class="pos-stat-val dn">$1.11</div></div>
-      <div class="pos-stat"><div class="pos-stat-lbl">Entry</div><div class="pos-stat-val">$1.3081</div></div>
-      <div class="pos-stat"><div class="pos-stat-lbl">Target</div><div class="pos-stat-val up">$1.70</div></div>
+      <div class="ps"><div class="ps-l">Stop</div><div class="ps-v dn">$1.11</div></div>
+      <div class="ps"><div class="ps-l">Entry</div><div class="ps-v">$1.3081</div></div>
+      <div class="ps"><div class="ps-l">Target</div><div class="ps-v up">$1.70</div></div>
     </div>
-    <div class="prog-bar">
+    <div class="prog">
       <div class="prog-fill"></div>
       <div class="prog-thumb" id="progThumb" style="left:37%"></div>
     </div>
-    <div class="prog-labels">
+    <div class="prog-lbls">
       <span class="dn">$1.11</span>
-      <span id="progMid" style="color:var(--t2)">—</span>
+      <span id="progMid" class="neu">—</span>
       <span class="up">$1.70</span>
     </div>
   </div>
-
-  <!-- Barometers -->
   <div class="sec-hdr">
     <div class="sec-title">Geopolitical Barometers</div>
     <div class="sec-sub">safe-haven signals</div>
   </div>
   <div class="baro-grid" id="baroGrid">
-    <div class="skel h48"></div><div class="skel h48"></div>
-    <div class="skel h48"></div><div class="skel h48"></div>
+    <div class="skel h56"></div><div class="skel h56"></div>
+    <div class="skel h56"></div><div class="skel h56"></div>
   </div>
-
-  <!-- Indices -->
-  <div class="sec-hdr">
-    <div class="sec-title">Indices</div>
-    <div class="sec-sub">global equities</div>
-  </div>
-  <div class="mkt-list" id="idxList">
-    <div class="skel h48"></div><div class="skel h48"></div><div class="skel h48"></div>
-  </div>
-
-  <!-- Sectors -->
-  <div class="sec-hdr">
-    <div class="sec-title">Sectors</div>
-    <div class="sec-sub">thematic plays</div>
-  </div>
-  <div class="mkt-list" id="secList">
-    <div class="skel h48"></div><div class="skel h48"></div>
-  </div>
-
-  <!-- Crypto -->
   <div class="sec-hdr">
     <div class="sec-title">Crypto</div>
     <div class="sec-sub" id="cryptoCount">top 25</div>
   </div>
-  <div class="crypto-list" id="cryptoList">
-    <div class="skel h48"></div><div class="skel h48"></div><div class="skel h48"></div>
-    <div class="skel h48"></div><div class="skel h48"></div>
+  <div id="cryptoList">
+    <div class="skel h48" style="margin-bottom:5px"></div>
+    <div class="skel h48" style="margin-bottom:5px"></div>
+    <div class="skel h48" style="margin-bottom:5px"></div>
+    <div class="skel h48" style="margin-bottom:5px"></div>
+    <div class="skel h48"></div>
   </div>
-
-  <div class="status-msg" id="statusMsg">tap refresh to scan all markets</div>
+  <div class="status" id="statusMsg">tap refresh to scan all markets</div>
 </div>
-
 <button class="fab" id="fab" onclick="runScan()">REFRESH ALL</button>
-
-<!-- Detail Sheet -->
 <div class="backdrop" id="backdrop" onclick="closeSheet(event)">
-  <div class="sheet" id="sheet">
-    <div class="sheet-handle"></div>
-    <div id="sheetBody"></div>
-  </div>
+  <div class="sheet"><div class="sh-handle"></div><div id="sheetBody"></div></div>
 </div>
-
 <script>
-// ── Constants ──
 const ENTRY=1.3081,UNITS=14.716,INVESTED=19.56,STOP=1.11,TARGET=1.70;
-const YF_BASE='https://query1.finance.yahoo.com/v7/finance/quote?symbols=';
-
-// ── Asset Config ──
-const BAROS=[
-  {sym:'GC=F', name:'Gold',    label:'XAU/USD', fmt:'large', riskDir:'up',   meaning:'Rising = safe-haven demand'},
-  {sym:'CL=F', name:'Oil WTI', label:'WTI/BBL', fmt:'large', riskDir:'up',   meaning:'Rising = Middle East risk'},
-  {sym:'JPY=X',name:'USD/JPY', label:'FX pair', fmt:'fx',    riskDir:'down', meaning:'Falling = JPY strengthening'},
-  {sym:'CHF=X',name:'USD/CHF', label:'FX pair', fmt:'fx',    riskDir:'down', meaning:'Falling = CHF strengthening'},
-];
-const INDICES=[
-  {sym:'^GSPC', name:'S&P 500',  tag:'US',  fmt:'large'},
-  {sym:'^FTSE', name:'FTSE 100', tag:'UK',  fmt:'large'},
-  {sym:'^GDAXI',name:'DAX',      tag:'DE',  fmt:'large'},
-];
-const SECTORS=[
-  {sym:'XLE', name:'Energy ETF',  tag:'XLE', sub:'Oil & gas sector',    fmt:'small'},
-  {sym:'ITA', name:'Defence ETF', tag:'ITA', sub:'Aerospace & defence', fmt:'small'},
-];
-
-// ── Helpers ──
-function fmtP(p,type='small'){
-  if(type==='fx')   return p.toFixed(3);
-  if(type==='large')return p>=1000?p.toLocaleString('en-US',{maximumFractionDigits:0}):'$'+p.toFixed(2);
-  if(p>=10000)return '$'+p.toLocaleString('en-US',{maximumFractionDigits:0});
-  if(p>=1)return '$'+p.toFixed(2);
-  if(p>=.01)return '$'+p.toFixed(4);
-  return '$'+p.toFixed(6);
-}
-function pctColor(v){return v>0?'up':v<0?'dn':'neu'}
-function pctStr(v){const s=v>=0?'+':'';return s+v.toFixed(2)+'%'}
-function fmtLarge(n){
-  if(!n)return '—';
-  if(n>=1e12)return '$'+(n/1e12).toFixed(2)+'T';
-  if(n>=1e9) return '$'+(n/1e9).toFixed(1)+'B';
-  if(n>=1e6) return '$'+(n/1e6).toFixed(1)+'M';
-  return '$'+n.toFixed(0);
-}
-
-// ── Clock ──
 function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB')}
 tick();setInterval(tick,1000);
-
-// ── Position ──
+function fmtP(p){if(p>=10000)return '$'+p.toLocaleString('en-US',{maximumFractionDigits:0});if(p>=1)return '$'+p.toFixed(2);if(p>=.01)return '$'+p.toFixed(4);return '$'+p.toFixed(6)}
+function fmtLarge(n){if(!n)return'—';if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(1)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+n.toFixed(0)}
+function pctStr(v){return(v>=0?'+':'')+v.toFixed(2)+'%'}
+function pCol(v){return v>0?'up':v<0?'dn':'neu'}
 function updatePos(price){
-  const pnl=(price-ENTRY)*UNITS;
-  const pct=(price-ENTRY)/ENTRY*100;
-  const s=pnl>=0?'+':'';
-  const col=pnl>=0?'var(--green)':'var(--red)';
-  document.getElementById('xrpLive').textContent=fmtP(price,'small');
-  const pv=document.getElementById('pnlVal');
-  pv.textContent=s+'$'+Math.abs(pnl).toFixed(2);
-  pv.style.color=col;
+  const pnl=(price-ENTRY)*UNITS,pct=(price-ENTRY)/ENTRY*100,s=pnl>=0?'+':'',col=pnl>=0?'var(--green)':'var(--red)';
+  document.getElementById('xrpLive').textContent=fmtP(price);
+  const pv=document.getElementById('pnlVal');pv.textContent=s+'$'+Math.abs(pnl).toFixed(2);pv.style.color=col;
   document.getElementById('pnlPct').textContent=s+pct.toFixed(2)+'%  ·  entry $1.3081';
-  const stopD=((price-STOP)/price*100).toFixed(1);
-  const tpD=((TARGET-price)/price*100).toFixed(1);
-  document.getElementById('xrpDist').textContent='stop '+stopD+'% · tp '+tpD+'%';
-  const pct_r=Math.max(2,Math.min(98,(price-STOP)/(TARGET-STOP)*100));
-  document.getElementById('progThumb').style.left=pct_r+'%';
-  document.getElementById('progMid').textContent=fmtP(price,'small');
-  document.getElementById('progMid').style.color=pnl>=0?'var(--green)':'var(--red)';
+  document.getElementById('xrpDist').textContent='stop '+((price-STOP)/price*100).toFixed(1)+'% · tp '+((TARGET-price)/price*100).toFixed(1)+'%';
+  const pR=Math.max(2,Math.min(98,(price-STOP)/(TARGET-STOP)*100));
+  document.getElementById('progThumb').style.left=pR+'%';
+  const pm=document.getElementById('progMid');pm.textContent=fmtP(price);pm.style.color=col;
 }
-
-// ── Risk Engine ──
-let riskData={gold:null,oil:null,jpy:null,chf:null,spx:null};
-function calcRisk(){
-  const signals=[];
-  if(riskData.gold!==null && riskData.gold>0.5)  signals.push('Gold +'+riskData.gold.toFixed(1)+'%');
-  if(riskData.oil!==null  && riskData.oil>1.0)   signals.push('Oil +'+riskData.oil.toFixed(1)+'%');
-  if(riskData.jpy!==null  && riskData.jpy<-0.3)  signals.push('JPY strengthening');
-  if(riskData.chf!==null  && riskData.chf<-0.3)  signals.push('CHF strengthening');
-  if(riskData.spx!==null  && riskData.spx<-0.5)  signals.push('S&P 500 '+riskData.spx.toFixed(1)+'%');
-  const n=signals.length;
-  const card=document.getElementById('riskCard');
-  const label=document.getElementById('riskLabel');
-  const dotsEl=document.getElementById('riskDots');
-  const sigsEl=document.getElementById('riskSignals');
-  const actEl=document.getElementById('riskAction');
-  card.className='risk-card '+(n>=3?'riskoff':n>=1?'caution':'calm');
-  const cls=n>=3?'riskoff':n>=1?'caution':'calm';
-  const dotOn='dot on-'+cls;
-  let dotHTML='';
-  for(let i=0;i<5;i++)dotHTML+=`<div class="dot ${i<n?dotOn:''}"></div>`;
-  dotsEl.innerHTML=dotHTML;
-  if(n===0){
-    label.textContent='RISK-ON';
-    sigsEl.textContent='No safe-haven signals active. Markets calm.';
-    actEl.textContent='→ Crypto & growth assets have tailwind';
-  } else if(n<=2){
-    label.textContent='CAUTION';
-    sigsEl.textContent='Active: '+signals.join(' · ');
-    actEl.textContent='→ Watch XRP $1.28 support closely';
-  } else {
-    label.textContent='RISK-OFF';
-    sigsEl.textContent='Active: '+signals.join(' · ');
-    actEl.textContent='→ Defensive mode. Be cautious adding to XRP';
-  }
+let R={gold:null,jpy:null,chf:null,btc:null};
+function updateRisk(){
+  const sigs=[];
+  if(R.gold!==null&&R.gold>0.5)sigs.push('Gold +'+R.gold.toFixed(1)+'%');
+  if(R.jpy!==null&&R.jpy<-0.3)sigs.push('JPY strengthening ('+R.jpy.toFixed(2)+'%)');
+  if(R.chf!==null&&R.chf<-0.3)sigs.push('CHF strengthening ('+R.chf.toFixed(2)+'%)');
+  if(R.btc!==null&&R.btc<-3)sigs.push('BTC '+R.btc.toFixed(1)+'% sell-off');
+  const n=sigs.length,mode=n>=3?'riskoff':n>=1?'caution':'calm';
+  document.getElementById('riskCard').className='risk-card '+mode;
+  const labels={calm:'RISK-ON',caution:'CAUTION',riskoff:'RISK-OFF'};
+  document.getElementById('riskLabel').textContent=labels[mode];
+  let dots='';for(let i=0;i<4;i++)dots+=`<div class="dot${i<n?' on':''}"></div>`;
+  document.getElementById('riskDots').innerHTML=dots;
+  const actions={calm:'→ Crypto & growth have tailwind. XRP environment supportive.',caution:'→ Monitor closely. Watch XRP $1.28 support level.',riskoff:'→ Defensive mode. Be cautious adding to XRP position.'};
+  document.getElementById('riskSigs').textContent=n===0?'No safe-haven signals active. Markets calm.':'Active: '+sigs.join(' · ');
+  document.getElementById('riskAction').textContent=actions[mode];
 }
-
-// ── Fetch Yahoo Finance (multi-proxy fallback) ──
-async function fetchYF(symbols){
-  const yfUrl=YF_BASE+symbols.join(',');
-  const proxies=[
-    'https://api.allorigins.win/raw?url='+encodeURIComponent(yfUrl),
-    'https://corsproxy.io/?'+encodeURIComponent(yfUrl),
-    'https://cors.eu.org/'+yfUrl,
-  ];
-  for(const url of proxies){
-    try{
-      const r=await fetch(url,{signal:AbortSignal.timeout(9000)});
-      if(!r.ok)continue;
-      const d=await r.json();
-      const results=d.quoteResponse?.result||[];
-      if(!results.length)continue;
-      const map={};
-      results.forEach(q=>map[q.symbol]=q);
-      return map;
-    }catch(e){continue}
-  }
-  throw new Error('Market data unavailable');
-}
-
-// ── Render Barometers ──
-function renderBaros(qmap){
-  const grid=document.getElementById('baroGrid');
-  grid.innerHTML='';
-  BAROS.forEach(b=>{
-    const q=qmap[b.sym];
-    if(!q){grid.innerHTML+='<div class="skel h48"></div>';return}
-    const price=q.regularMarketPrice;
-    const chg=q.regularMarketChangePercent||0;
-    // Risk signal
-    const isRisk=(b.riskDir==='up'&&chg>0.5)||(b.riskDir==='down'&&chg<-0.3);
-    const sigClass=isRisk?'sig-warn':'sig-ok';
-    const sigText=isRisk?'RISK-OFF':'CALM';
-    // store for risk engine
-    if(b.sym==='GC=F')riskData.gold=chg;
-    if(b.sym==='CL=F')riskData.oil=chg;
-    if(b.sym==='JPY=X')riskData.jpy=chg;
-    if(b.sym==='CHF=X')riskData.chf=chg;
-    const priceStr=b.fmt==='fx'?price.toFixed(3):b.fmt==='large'?price.toLocaleString('en-US',{maximumFractionDigits:2}):fmtP(price);
-    const card=document.createElement('div');
-    card.className='baro-card';
-    card.innerHTML=`
-      <div class="baro-top">
-        <div class="baro-name">${b.name}</div>
-        <div class="baro-signal ${sigClass}">${sigText}</div>
-      </div>
-      <div class="baro-price">${priceStr}</div>
-      <div class="baro-change ${pctColor(chg)}">${pctStr(chg)}</div>
-      <div class="baro-lbl">${b.label}</div>`;
-    card.onclick=()=>openBaroSheet(b,q,chg,isRisk);
-    grid.appendChild(card);
-  });
-  calcRisk();
-}
-
-// ── Render Indices & Sectors ──
-function renderMktList(elId,defs,qmap){
-  const el=document.getElementById(elId);
-  el.innerHTML='';
-  defs.forEach(d=>{
-    const q=qmap[d.sym];
-    if(!q){el.innerHTML+='<div class="skel h48"></div>';return}
-    const price=q.regularMarketPrice;
-    const chg=q.regularMarketChangePercent||0;
-    if(d.sym==='^GSPC')riskData.spx=chg;
-    const priceStr=price>=1000?price.toLocaleString('en-US',{maximumFractionDigits:2}):fmtP(price);
-    const row=document.createElement('div');
-    row.className='mkt-row';
-    row.innerHTML=`
-      <div class="mkt-left">
-        <div class="mkt-tag">${d.tag||d.sym}</div>
-        <div>
-          <div class="mkt-name">${d.name}</div>
-          ${d.sub?`<div class="mkt-sub">${d.sub}</div>`:''}
-        </div>
-      </div>
-      <div class="mkt-right">
-        <div class="mkt-price">${priceStr}</div>
-        <div class="mkt-change ${pctColor(chg)}">${pctStr(chg)}</div>
-      </div>`;
-    row.onclick=()=>openMktSheet(d,q,chg);
-    el.appendChild(row);
-  });
-}
-
-// ── Crypto Scoring ──
-function cryptoScore(change,vol,mcap){
-  const momentum=change*0.6;
-  const ratio=(vol/mcap)*100;
-  const vs=Math.min(ratio,10);
-  let conv=0;
-  if(change>0&&ratio>5)conv=2;
-  else if(change<0&&ratio>5)conv=-1;
-  return{score:parseFloat((momentum+vs+conv).toFixed(2)),vs:parseFloat(vs.toFixed(2)),conv,ratio:parseFloat(ratio.toFixed(3)),momentum:parseFloat(momentum.toFixed(2))};
-}
-function cryptoSig(s){
-  if(s>8) return{label:'STRONG BUY',cls:'bsb'};
-  if(s>4) return{label:'BUY',       cls:'bb'};
-  if(s>0) return{label:'WATCH',     cls:'bw'};
-  if(s>-4)return{label:'AVOID',     cls:'ba'};
-  return       {label:'BEARISH',    cls:'bbr'};
-}
-
-// ── Render Crypto ──
-function renderCrypto(coins){
-  const list=document.getElementById('cryptoList');
-  list.innerHTML='';
-  document.getElementById('cryptoCount').textContent=coins.length+' coins';
-  coins.forEach((c,i)=>{
-    const s=cryptoScore(c.change,c.vol,c.mcap);
-    const sig=cryptoSig(s.score);
-    const isXrp=c.symbol.toUpperCase()==='XRP';
-    const col=c.change>=0?'up':'dn';
-    const card=document.createElement('div');
-    card.className='coin-card'+(isXrp?' xrp-card':'');
-    card.innerHTML=`
-      <div class="coin-l">
-        <div class="coin-rank">${i+1}</div>
-        <div>
-          <div class="coin-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}${isXrp?' ★':''}</div>
-          <div class="coin-nm">${c.name}</div>
-        </div>
-      </div>
-      <div class="coin-r">
-        <div style="text-align:right">
-          <div class="coin-price">${fmtP(c.price)}</div>
-          <div class="coin-chg ${col}">${pctStr(c.change)}</div>
-        </div>
-        <div style="text-align:right;min-width:72px">
-          <div class="badge ${sig.cls}">${sig.label}</div>
-          <div class="score-lbl">${s.score}</div>
-        </div>
-      </div>`;
-    card.onclick=()=>openCryptoSheet(c,s,sig);
-    list.appendChild(card);
-  });
-}
-
-// ── Sheets ──
-function openSheet(){document.getElementById('backdrop').classList.add('open')}
-function closeSheet(e){if(e.target===document.getElementById('backdrop'))document.getElementById('backdrop').classList.remove('open')}
-
-function openBaroSheet(b,q,chg,isRisk){
-  const price=q.regularMarketPrice;
-  const priceStr=b.fmt==='fx'?price.toFixed(4):price.toLocaleString('en-US',{maximumFractionDigits:2});
-  document.getElementById('sheetBody').innerHTML=`
-    <div class="sh-hdr">
-      <div><div class="sh-sym">${b.name}</div><div class="sh-name">${b.label} · ${b.meaning}</div></div>
-      <div>
-        <div class="sh-price">${priceStr}</div>
-        <div class="sh-chg ${pctColor(chg)}">${pctStr(chg)}</div>
-      </div>
-    </div>
-    <div class="sh-grid">
-      <div class="sh-stat"><div class="sh-stat-lbl">Day High</div><div class="sh-stat-val">${(q.regularMarketDayHigh||0).toFixed(b.fmt==='fx'?4:2)}</div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">Day Low</div><div class="sh-stat-val">${(q.regularMarketDayLow||0).toFixed(b.fmt==='fx'?4:2)}</div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">Risk Signal</div><div class="sh-stat-val"><span class="badge ${isRisk?'bbr':'bb'}">${isRisk?'RISK-OFF':'CALM'}</span></div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">Risk Dir</div><div class="sh-stat-val" style="font-size:11px;color:var(--t2)">${b.riskDir==='up'?'Rising = risk-off':'Falling = risk-off'}</div></div>
-    </div>
-    <div class="sh-section">
-      <div class="sh-sec-title">What this means</div>
-      <div class="sh-row"><span class="sh-row-lbl">Asset type</span><span class="sh-row-val">${b.fmt==='fx'?'Safe-haven FX':'Commodity'}</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Risk-off trigger</span><span class="sh-row-val">${b.riskDir==='up'?'Price rising (+)':'Price falling (-)'}</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Threshold</span><span class="sh-row-val">${b.riskDir==='up'?'>+0.5% / >+1% oil':'>-0.3%'}</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Currently</span><span class="sh-row-val ${isRisk?'dn':'up'}">${isRisk?'Signalling risk-off':'No signal'}</span></div>
-    </div>`;
-  openSheet();
-}
-
-function openMktSheet(d,q,chg){
-  const price=q.regularMarketPrice;
-  const priceStr=price>=1000?price.toLocaleString('en-US',{maximumFractionDigits:2}):fmtP(price);
-  document.getElementById('sheetBody').innerHTML=`
-    <div class="sh-hdr">
-      <div><div class="sh-sym">${d.tag||d.name}</div><div class="sh-name">${d.name}</div></div>
-      <div>
-        <div class="sh-price">${priceStr}</div>
-        <div class="sh-chg ${pctColor(chg)}">${pctStr(chg)}</div>
-      </div>
-    </div>
-    <div class="sh-grid">
-      <div class="sh-stat"><div class="sh-stat-lbl">Day High</div><div class="sh-stat-val">${(q.regularMarketDayHigh||0).toLocaleString('en-US',{maximumFractionDigits:2})}</div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">Day Low</div><div class="sh-stat-val">${(q.regularMarketDayLow||0).toLocaleString('en-US',{maximumFractionDigits:2})}</div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">52w High</div><div class="sh-stat-val">${(q.fiftyTwoWeekHigh||0).toLocaleString('en-US',{maximumFractionDigits:2})}</div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">52w Low</div><div class="sh-stat-val">${(q.fiftyTwoWeekLow||0).toLocaleString('en-US',{maximumFractionDigits:2})}</div></div>
-    </div>`;
-  openSheet();
-}
-
-function openCryptoSheet(c,s,sig){
-  const isXrp=c.symbol.toUpperCase()==='XRP';
-  const col=pctColor(c.change);
-  let xrpHTML='';
-  if(isXrp){
-    const pnl=(c.price-ENTRY)*UNITS;
-    const pct=(c.price-ENTRY)/ENTRY*100;
-    const ps=pnl>=0?'+':''; const pc=pnl>=0?'var(--green)':'var(--red)';
-    xrpHTML=`<div class="pos-sec">
-      <div class="sh-sec-title">My position</div>
-      <div class="sh-row"><span class="sh-row-lbl">Entry</span><span class="sh-row-val">$1.3081</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Units</span><span class="sh-row-val">14.716 XRP</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Invested</span><span class="sh-row-val">$${INVESTED}</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">P&L</span><span class="sh-row-val" style="color:${pc}">${ps}$${Math.abs(pnl).toFixed(2)} (${ps}${pct.toFixed(2)}%)</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Stop</span><span class="sh-row-val dn">$1.11</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Take profit</span><span class="sh-row-val up">$1.70</span></div>
-    </div>`;
-  }
-  document.getElementById('sheetBody').innerHTML=`
-    <div class="sh-hdr">
-      <div><div class="sh-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}</div><div class="sh-name">${c.name}</div></div>
-      <div>
-        <div class="sh-price">${fmtP(c.price)}</div>
-        <div class="sh-chg ${col}">${pctStr(c.change)}</div>
-      </div>
-    </div>
-    <div class="sh-grid">
-      <div class="sh-stat"><div class="sh-stat-lbl">Market Cap</div><div class="sh-stat-val">${fmtLarge(c.mcap)}</div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">Volume 24h</div><div class="sh-stat-val">${fmtLarge(c.vol)}</div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">Vol/MCap</div><div class="sh-stat-val">${s.ratio.toFixed(2)}%</div></div>
-      <div class="sh-stat"><div class="sh-stat-lbl">Signal</div><div class="sh-stat-val"><span class="badge ${sig.cls}">${sig.label}</span></div></div>
-    </div>
-    <div class="sh-section">
-      <div class="sh-sec-title">Score breakdown</div>
-      <div class="sh-row"><span class="sh-row-lbl">Momentum (24h × 0.6)</span><span class="sh-row-val">${s.momentum}</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Volume score (cap 10)</span><span class="sh-row-val">${s.vs}</span></div>
-      <div class="sh-row"><span class="sh-row-lbl">Conviction</span><span class="sh-row-val">${s.conv>0?'+'+s.conv:s.conv}</span></div>
-      <div class="sh-row total"><span class="sh-row-lbl">Total</span><span class="sh-row-val"><span class="badge ${sig.cls}">${s.score}</span></span></div>
-    </div>
-    ${xrpHTML}`;
-  openSheet();
-}
-
-// ── Main Scan ──
-async function runScan(){
-  const fab=document.getElementById('fab');
-  const status=document.getElementById('statusMsg');
-  fab.disabled=true; fab.textContent='SCANNING...';
-  status.textContent='fetching all markets...';
-
-  const allSyms=[...BAROS,...INDICES,...SECTORS].map(d=>d.sym);
-
-  const [yfResult,cgResult]=await Promise.allSettled([
-    fetchYF(allSyms),
-    fetchCG()
+async function fetchFX(){
+  const today=new Date(),prev=new Date(today);
+  prev.setDate(today.getDate()-1);
+  if(prev.getDay()===0)prev.setDate(prev.getDate()-2);
+  if(prev.getDay()===6)prev.setDate(prev.getDate()-1);
+  const prevStr=prev.toISOString().split('T')[0];
+  const [nr,pr]=await Promise.all([
+    fetch('https://api.frankfurter.app/latest?from=USD&to=JPY,CHF,GBP,EUR'),
+    fetch('https://api.frankfurter.app/'+prevStr+'?from=USD&to=JPY,CHF,GBP,EUR')
   ]);
-
-  if(yfResult.status==='fulfilled'){
-    const qmap=yfResult.value;
-    renderBaros(qmap);
-    renderMktList('idxList',INDICES,qmap);
-    renderMktList('secList',SECTORS,qmap);
-    calcRisk();
-  } else {
-    document.getElementById('baroGrid').innerHTML='<div style="grid-column:span 2;font-family:var(--mono);font-size:10px;color:var(--t3);padding:12px 0">Market data unavailable — try again</div>';
-    document.getElementById('riskSignals').textContent='Could not fetch market data';
-  }
-
-  if(cgResult.status==='fulfilled'){
-    const coins=cgResult.value;
-    const xrp=coins.find(c=>c.symbol.toUpperCase()==='XRP');
-    if(xrp)updatePos(xrp.price);
-    renderCrypto(coins);
-  } else {
-    document.getElementById('cryptoList').innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--t3);padding:12px 0">Crypto data unavailable — try again</div>';
-  }
-
-  const now=new Date();
-  status.textContent='updated '+now.toLocaleTimeString('en-GB')+' · via Yahoo Finance + CoinGecko';
-  fab.disabled=false; fab.textContent='REFRESH ALL';
+  if(!nr.ok||!pr.ok)throw new Error('FX failed');
+  const now=await nr.json(),p=await pr.json(),result={};
+  for(const c of['JPY','CHF','GBP','EUR']){const cur=now.rates[c],old=p.rates[c];result[c]={price:cur,change:old?((cur-old)/old*100):0};}
+  return result;
 }
-
-async function fetchCG(){
-  const url='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h';
-  const r=await fetch(url);
-  if(!r.ok)throw new Error('CG '+r.status);
+async function fetchGold(){
+  const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true');
+  if(!r.ok)throw new Error('Gold failed');
+  const d=await r.json();return{price:d['pax-gold'].usd,change:d['pax-gold'].usd_24h_change||0};
+}
+async function fetchCrypto(){
+  const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h');
+  if(!r.ok)throw new Error('Crypto failed');
   const raw=await r.json();
   return raw.map(c=>({symbol:c.symbol,name:c.name,price:c.current_price,change:c.price_change_percentage_24h||0,vol:c.total_volume,mcap:c.market_cap}));
 }
-
-// Auto-scan
+const BAROS=[
+  {key:'gold',name:'Gold',       sub:'XAU · via PAXG/CoinGecko', fmt:'p',   riskDir:'up',   thresh:0.5,  meaning:'Rising = safe-haven demand · risk-off signal'},
+  {key:'jpy', name:'USD / JPY',  sub:'FX · Frankfurter/ECB',     fmt:'fx2', riskDir:'down', thresh:-0.3, meaning:'Falling = JPY strengthening · risk-off signal'},
+  {key:'chf', name:'USD / CHF',  sub:'FX · Frankfurter/ECB',     fmt:'fx3', riskDir:'down', thresh:-0.3, meaning:'Falling = CHF strengthening · risk-off signal'},
+  {key:'btc', name:'Bitcoin',    sub:'BTC · crypto sentiment',    fmt:'p',   riskDir:'down', thresh:-3,   meaning:'Sharp drop = broad risk-off in crypto'},
+];
+let baroData={};
+function renderBaros(){
+  const grid=document.getElementById('baroGrid');grid.innerHTML='';
+  BAROS.forEach(b=>{
+    const d=baroData[b.key];
+    if(!d){grid.innerHTML+='<div class="skel h56"></div>';return}
+    const isRisk=b.riskDir==='up'?d.change>b.thresh:d.change<b.thresh;
+    R[b.key]=d.change;
+    const ps=b.fmt==='fx2'?d.price.toFixed(2):b.fmt==='fx3'?d.price.toFixed(3):fmtP(d.price);
+    const el=document.createElement('div');el.className='baro';
+    el.innerHTML=`<div class="baro-top"><div class="baro-name">${b.name}</div><div class="baro-tag ${isRisk?'tag-warn':'tag-ok'}">${isRisk?'RISK-OFF':'CALM'}</div></div><div class="baro-price">${ps}</div><div class="baro-chg ${pCol(d.change)}">${pctStr(d.change)}</div><div class="baro-src">${b.sub}</div>`;
+    el.onclick=()=>openBaroSheet(b,d,isRisk);
+    grid.appendChild(el);
+  });
+  updateRisk();
+}
+function score(change,vol,mcap){const m=change*.6,ratio=(vol/mcap)*100,vs=Math.min(ratio,10);let conv=0;if(change>0&&ratio>5)conv=2;else if(change<0&&ratio>5)conv=-1;return{score:parseFloat((m+vs+conv).toFixed(2)),vs:parseFloat(vs.toFixed(2)),conv,ratio:parseFloat(ratio.toFixed(3)),m:parseFloat(m.toFixed(2))}}
+function sig(s){if(s>8)return{l:'STRONG BUY',c:'bsb'};if(s>4)return{l:'BUY',c:'bb'};if(s>0)return{l:'WATCH',c:'bw'};if(s>-4)return{l:'AVOID',c:'ba'};return{l:'BEARISH',c:'bbr'}}
+function renderCrypto(coins){
+  const list=document.getElementById('cryptoList');list.innerHTML='';
+  document.getElementById('cryptoCount').textContent=coins.length+' coins';
+  coins.forEach((c,i)=>{
+    const s=score(c.change,c.vol,c.mcap),sg=sig(s.score),isXrp=c.symbol.toUpperCase()==='XRP';
+    const card=document.createElement('div');card.className='coin-card'+(isXrp?' xrp':'');
+    card.innerHTML=`<div class="cl"><div class="c-rank">${i+1}</div><div><div class="c-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}${isXrp?' \u2605':''}</div><div class="c-nm">${c.name}</div></div></div><div class="cr"><div><div class="c-price">${fmtP(c.price)}</div><div class="c-chg ${pCol(c.change)}">${pctStr(c.change)}</div></div><div style="min-width:72px;text-align:right"><div class="badge ${sg.c}">${sg.l}</div><div class="sc">${s.score}</div></div></div>`;
+    card.onclick=()=>openCryptoSheet(c,s,sg);list.appendChild(card);
+  });
+}
+function closeSheet(e){if(e.target===document.getElementById('backdrop'))document.getElementById('backdrop').classList.remove('open')}
+function openSheet(){document.getElementById('backdrop').classList.add('open')}
+function openBaroSheet(b,d,isRisk){
+  const ps=b.fmt==='fx2'?d.price.toFixed(2):b.fmt==='fx3'?d.price.toFixed(3):fmtP(d.price);
+  document.getElementById('sheetBody').innerHTML=`<div class="sh-hdr"><div><div class="sh-sym">${b.name}</div><div class="sh-name">${b.sub}</div></div><div><div class="sh-price">${ps}</div><div class="sh-chg ${pCol(d.change)}">${pctStr(d.change)}</div></div></div><div class="sh-title">What this means</div><div class="sh-row"><span class="sh-rl">Interpretation</span><span class="sh-rv" style="font-size:11px;max-width:200px;text-align:right">${b.meaning}</span></div><div class="sh-row"><span class="sh-rl">Risk trigger</span><span class="sh-rv">${b.riskDir==='up'?'Change > +'+b.thresh+'%':'Change < '+b.thresh+'%'}</span></div><div class="sh-row"><span class="sh-rl">Current reading</span><span class="sh-rv ${isRisk?'dn':'up'}">${isRisk?'Risk-off signal active':'No signal'}</span></div><div class="sh-row"><span class="sh-rl">Impact on XRP</span><span class="sh-rv">${isRisk?'Negative — defensive posture':'Neutral to positive'}</span></div>`;
+  openSheet();
+}
+function openCryptoSheet(c,s,sg){
+  const isXrp=c.symbol.toUpperCase()==='XRP';let xrpHTML='';
+  if(isXrp){const pnl=(c.price-ENTRY)*UNITS,pct=(c.price-ENTRY)/ENTRY*100,ps=pnl>=0?'+':'',pc=pnl>=0?'var(--green)':'var(--red)';xrpHTML=`<div class="pos-sec"><div class="sh-title">My position</div><div class="sh-row"><span class="sh-rl">Entry</span><span class="sh-rv">$1.3081</span></div><div class="sh-row"><span class="sh-rl">Units</span><span class="sh-rv">14.716 XRP</span></div><div class="sh-row"><span class="sh-rl">Invested</span><span class="sh-rv">$${INVESTED}</span></div><div class="sh-row"><span class="sh-rl">P&amp;L</span><span class="sh-rv" style="color:${pc}">${ps}$${Math.abs(pnl).toFixed(2)} (${ps}${pct.toFixed(2)}%)</span></div><div class="sh-row"><span class="sh-rl">Stop loss</span><span class="sh-rv dn">$1.11</span></div><div class="sh-row"><span class="sh-rl">Take profit</span><span class="sh-rv up">$1.70</span></div></div>`;}
+  document.getElementById('sheetBody').innerHTML=`<div class="sh-hdr"><div><div class="sh-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}</div><div class="sh-name">${c.name}</div></div><div><div class="sh-price">${fmtP(c.price)}</div><div class="sh-chg ${pCol(c.change)}">${pctStr(c.change)}</div></div></div><div class="sh-grid"><div class="sh-stat"><div class="sh-stat-l">Market Cap</div><div class="sh-stat-v">${fmtLarge(c.mcap)}</div></div><div class="sh-stat"><div class="sh-stat-l">Volume 24h</div><div class="sh-stat-v">${fmtLarge(c.vol)}</div></div><div class="sh-stat"><div class="sh-stat-l">Vol / MCap</div><div class="sh-stat-v">${s.ratio.toFixed(2)}%</div></div><div class="sh-stat"><div class="sh-stat-l">Signal</div><div class="sh-stat-v"><span class="badge ${sg.c}">${sg.l}</span></div></div></div><div class="sh-title">Score breakdown</div><div class="sh-row"><span class="sh-rl">Momentum (24h x 0.6)</span><span class="sh-rv">${s.m}</span></div><div class="sh-row"><span class="sh-rl">Volume score (cap 10)</span><span class="sh-rv">${s.vs}</span></div><div class="sh-row"><span class="sh-rl">Conviction</span><span class="sh-rv">${s.conv>0?'+'+s.conv:s.conv}</span></div><div class="sh-row tot"><span class="sh-rl">Total</span><span class="sh-rv"><span class="badge ${sg.c}">${s.score}</span></span></div>${xrpHTML}`;
+  openSheet();
+}
+async function runScan(){
+  const fab=document.getElementById('fab'),status=document.getElementById('statusMsg');
+  fab.disabled=true;fab.textContent='SCANNING...';status.textContent='fetching markets...';
+  const [fxRes,goldRes,cryptoRes]=await Promise.allSettled([fetchFX(),fetchGold(),fetchCrypto()]);
+  if(fxRes.status==='fulfilled'){const fx=fxRes.value;baroData.jpy={price:fx.JPY.price,change:fx.JPY.change};baroData.chf={price:fx.CHF.price,change:fx.CHF.change};}
+  if(goldRes.status==='fulfilled'){baroData.gold=goldRes.value;}
+  if(cryptoRes.status==='fulfilled'){const coins=cryptoRes.value;const xrp=coins.find(c=>c.symbol.toUpperCase()==='XRP');if(xrp)updatePos(xrp.price);const btc=coins.find(c=>c.symbol.toUpperCase()==='BTC');if(btc)baroData.btc={price:btc.price,change:btc.change};renderCrypto(coins);}
+  renderBaros();
+  const now=new Date(),parts=[];
+  if(fxRes.status==='fulfilled')parts.push('FX');if(goldRes.status==='fulfilled')parts.push('Gold');if(cryptoRes.status==='fulfilled')parts.push('Crypto');
+  status.textContent='updated '+now.toLocaleTimeString('en-GB')+' · '+parts.join(', ');
+  fab.disabled=false;fab.textContent='REFRESH ALL';
+}
 runScan();
 </script>
 </body>
