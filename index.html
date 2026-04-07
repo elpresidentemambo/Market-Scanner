@@ -17,7 +17,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 .hdr{padding:48px 16px 12px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--b1);flex-shrink:0}
 .hdr-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase}
 .hdr-clock{font-family:var(--mono);font-size:11px;color:var(--t3)}
-.scroll{flex:1;overflow-y:auto;padding:12px 16px 100px;-webkit-overflow-scrolling:touch}
+.scroll{flex:1;overflow-y:auto;padding:12px 16px 80px;-webkit-overflow-scrolling:touch}
 
 /* Risk banner */
 .risk-banner{border-radius:12px;padding:13px 15px;margin-bottom:14px;border:1px solid var(--b2);transition:background .4s,border-color .4s}
@@ -99,8 +99,10 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 .status{font-family:var(--mono);font-size:9px;color:var(--t3);text-align:center;padding:8px 0;letter-spacing:.04em}
 
 /* FAB */
-.fab{position:fixed;bottom:16px;right:16px;transform:none;background:var(--s2);color:var(--t2);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;padding:9px 16px;border-radius:40px;border:1px solid var(--b2);cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.4);z-index:40;white-space:nowrap;transition:background .15s,color .15s}
-.fab:active{background:var(--t1);color:var(--bg);transform:scale(.97)}.fab:disabled{opacity:.4}
+.fab-dock{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:rgba(8,8,8,.92);border-top:1px solid var(--b2);padding:10px 16px;z-index:40;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(8px)}
+.fab{background:var(--s2);color:var(--t2);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;padding:8px 20px;border-radius:20px;border:1px solid var(--b2);cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.fab:active{background:var(--t1);color:var(--bg)}.fab:disabled{opacity:.4}
+.dock-status{font-family:var(--mono);font-size:9px;color:var(--t3);flex:1;padding-right:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 
 /* Sheet */
 .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;display:none;align-items:flex-end;backdrop-filter:blur(3px)}
@@ -203,7 +205,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
     <div class="sec-title">What I'm Learning</div>
     <div class="sec-sub" id="trackerBadge">tap to open</div>
   </div>
-  <div id="trackerPanel" style="display:none;margin-bottom:14px"></div>
+  <div id="trackerPanel" style="display:block;margin-bottom:14px"></div>
 
   <div class="sec-hdr">
     <div class="sec-title">Opportunity Scanner</div>
@@ -238,7 +240,10 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
   <div class="status" id="statusMsg">tap refresh to scan all markets</div>
 </div>
 
-<button class="fab" id="fab" onclick="runScan()">REFRESH ALL</button>
+<div class="fab-dock">
+  <div class="dock-status" id="dockStatus">tap refresh to scan</div>
+  <button class="fab" id="fab" onclick="runScan()">REFRESH ALL</button>
+</div>
 
 <div class="backdrop" id="backdrop" onclick="closeSheet(event)">
   <div class="sheet"><div class="sh-handle"></div><div id="sheetBody"></div></div>
@@ -689,14 +694,14 @@ function cryptoSig(s){
 }
 function renderCrypto(coins){
   const list=document.getElementById('cryptoList');list.innerHTML='';
-  document.getElementById('cryptoCount').textContent=coins.length+' coins';
-  const STABLES_DISPLAY=['USDT','USDC','USDS','USDE','DAI','USD1','BUSD','TUSD','USDP','WBTC','WETH','PAXG'];
-  coins.forEach((c,i)=>{
+  // count set in display filter below
+  const HIDE_LIST=['USDT','USDC','USDS','USDE','DAI','USD1','BUSD','TUSD','USDP','WBTC','WETH','PAXG','XAUT','FRAX','LUSD','FIGR_HELOC'];
+  const displayCoins=coins.filter(c=>!HIDE_LIST.includes(c.symbol.toUpperCase()));
+  document.getElementById('cryptoCount').textContent=displayCoins.length+' assets';
+  displayCoins.forEach((c,i)=>{
     const s=cryptoScore(c.change,c.vol,c.mcap),sg=cryptoSig(s.score);
     const isXrp=c.symbol.toUpperCase()==='XRP';
-    const isStable=STABLES_DISPLAY.includes(c.symbol.toUpperCase());
     const card=document.createElement('div');card.className='coin-card'+(isXrp?' xrp':'');
-    if(isStable)card.style.opacity='0.4';
     card.innerHTML=`
       <div class="cl"><div class="c-rank">${i+1}</div><div>
         <div class="c-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}${isXrp?' ★':''}</div>
@@ -926,6 +931,11 @@ setInterval(() => {
 }, 300000);
 
 // Init alert badge on load
+(function initOnLoad(){
+  // Render learning console on load
+  setTimeout(function(){ renderTracker(); }, 100);
+  // Init alert badge
+})();
 (function initAlertBadge(){
   const alerts = loadAlerts();
   const el = document.getElementById("alertBadge");
@@ -1149,7 +1159,7 @@ function calcAccuracy(sigs){
 
 // ── WHAT I'M LEARNING ────────────────────────────────────────────────
 
-let trackerOpen = false;
+let trackerOpen = true;
 function toggleTracker(){
   trackerOpen = !trackerOpen;
   document.getElementById("trackerPanel").style.display = trackerOpen ? "block" : "none";
@@ -1539,17 +1549,24 @@ function renderOpportunity(opp){
 
   sub.textContent = "vs " + opp.top3.map(c=>c.symbol.toUpperCase()).join(", ");
 
-  const altRows = opp.top3.map(c => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b1)">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--t1)">${c.symbol.toUpperCase()}</div>
-        <div style="font-size:11px;color:var(--t3)">${c.name}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-family:var(--mono);font-size:11px;color:${c.change>=0?"var(--green)":"var(--red)"}">${c.change>=0?"+":""}${c.change.toFixed(2)}%</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3)">score ${c.rawScore}</div>
-      </div>
-    </div>`).join("");
+  const altRows = opp.top3.map(c => {
+    const overheated = c.change > 10;
+    const chgCol = c.change >= 0 ? "var(--green)" : "var(--red)";
+    const sym = c.symbol.toUpperCase();
+    const chgStr = (c.change >= 0 ? "+" : "") + c.change.toFixed(2) + "%";
+    let row = '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b1)">';
+    row += '<div style="flex:1">';
+    row += '<div style="display:flex;align-items:center;gap:8px">';
+    row += '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--t1)">' + sym + '</div>';
+    row += '<div style="font-size:11px;color:var(--t3)">' + c.name + '</div></div>';
+    if(overheated) row += '<div style="font-family:var(--mono);font-size:9px;color:var(--amber);margin-top:2px">extended move — chase risk elevated</div>';
+    row += '</div>';
+    row += '<div style="text-align:right">';
+    row += '<div style="font-family:var(--mono);font-size:11px;color:' + chgCol + '">' + chgStr + '</div>';
+    row += '<div style="font-family:var(--mono);font-size:9px;color:var(--t3)">score ' + c.rawScore + '</div>';
+    row += '</div></div>';
+    return row;
+  }).join("");;
 
   const pnlStr = opp.currentPnL >= 0 ? "+$" + opp.currentPnL.toFixed(2) : "-$" + Math.abs(opp.currentPnL).toFixed(2);
   const scoreDiffStr = opp.scoreDiff > 0 ? "+" + opp.scoreDiff.toFixed(1) : opp.scoreDiff.toFixed(1);
@@ -1713,7 +1730,10 @@ async function runScan(){
   if(cgGlobalRes.status==='fulfilled')parts.push('Dominance');
   if(fgRes.status==='fulfilled')parts.push('Fear/Greed');
   if(xrpHistRes.status==='fulfilled')parts.push('30d history');
-  status.textContent='updated '+now.toLocaleTimeString('en-GB')+' · '+parts.join(', ');
+  const statusStr='updated '+now.toLocaleTimeString('en-GB')+' · '+parts.join(', ');
+  status.textContent=statusStr;
+  const dockEl=document.getElementById('dockStatus');
+  if(dockEl)dockEl.textContent=statusStr;
   fab.disabled=false;fab.textContent='REFRESH ALL';
 }
 
