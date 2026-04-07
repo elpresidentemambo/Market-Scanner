@@ -175,7 +175,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 
   <div class="sec-hdr">
     <div class="sec-title">Analyst View</div>
-    <div class="sec-sub" id="confluenceCount">loading...</div>
+    <div class="sec-sub" id="confluenceCount">9-factor analysis</div>
   </div>
   <div class="analyst-card" id="analystCard">
     <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Running 9-factor analysis...</div>
@@ -183,7 +183,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 
   <div class="sec-hdr">
     <div class="sec-title">Barometers</div>
-    <div class="sec-sub">macro signals</div>
+    <div class="sec-sub">geopolitical signals</div>
   </div>
   <div class="baro-grid" id="baroGrid">
     <div class="skel h56"></div><div class="skel h56"></div>
@@ -601,7 +601,11 @@ function renderBaros(){
   const grid=document.getElementById('baroGrid');grid.innerHTML='';
   BAROS.forEach(b=>{
     const d=baroData[b.key];
-    if(!d){grid.innerHTML+='<div class="skel h56"></div>';return;}
+    if(!d){
+      const el=document.createElement('div');el.className='baro';el.style.opacity='0.4';
+      el.innerHTML='<div class="baro-top"><div class="baro-name">'+b.name+'</div><div class="baro-tag tne">N/A</div></div><div class="baro-val" style="color:var(--t3)">—</div><div class="baro-chg neu">no data</div><div class="baro-src">'+b.sub+'</div>';
+      grid.appendChild(el);return;
+    }
     let isRisk,valStr,chgStr,chgCol;
     if(b.fmt==='pct'){
       isRisk=d.value>b.thresh;
@@ -772,7 +776,7 @@ async function runScan(){
   document.getElementById('analystCard').innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Running 9-factor analysis...</div>';
 
   const[cgSimpleRes,cgMarketsRes,cgGlobalRes,xrpHistRes,btcHistRes,ohlcRes,fgRes]=await Promise.allSettled([
-    fetchCGSimple('pax-gold,tether','usd,jpy,chf'),
+    fetchCGSimple('pax-gold,tether','usd,jpy,chf,eur'),
     fetchCGMarkets(),
     fetchCGGlobal(),
     fetchHistory('ripple',30),
@@ -788,20 +792,25 @@ async function runScan(){
       baroData.gold={price:d['pax-gold'].usd,change:d['pax-gold'].usd_24h_change||0};
     }
     if(d['tether']){
-      baroData.jpy={price:d['tether'].jpy,change:d['tether'].jpy_24h_change||0};
-      baroData.chf={price:d['tether'].chf,change:d['tether'].chf_24h_change||0};
-      // Oil proxy: use tether/USD change as baseline — we approximate oil from gold correlation
-      // In absence of direct oil API, show as unavailable gracefully
+      baroData.jpy={price:d['tether'].jpy||0,change:d['tether'].jpy_24h_change||0};
+      baroData.chf={price:d['tether'].chf||0,change:d['tether'].chf_24h_change||0};
     }
   }
 
-  // ── Parse Global (BTC dominance + Oil approx) ──
+  // ── Parse Global (BTC dominance) ──
   let btcDom=null;
   if(cgGlobalRes.status==='fulfilled'){
     const g=cgGlobalRes.value.data;
-    btcDom=g.market_cap_percentage.btc||null;
-    if(btcDom!==null){
-      const prevDom=btcDom; // no historical, show current with neutral change
+    btcDom=g.market_cap_percentage&&g.market_cap_percentage.btc?g.market_cap_percentage.btc:null;
+    if(btcDom!==null)baroData.dom={value:btcDom,change:0};
+  }
+  // Fallback: calculate from top 25 market cap data
+  if(btcDom===null&&cgMarketsRes.status==='fulfilled'){
+    const coins3=cgMarketsRes.value;
+    const totalMcap=coins3.reduce((a,c)=>a+c.mcap,0);
+    const btcMcap=coins3.find(c=>c.symbol.toUpperCase()==='BTC');
+    if(btcMcap&&totalMcap>0){
+      btcDom=parseFloat((btcMcap.mcap/totalMcap*100).toFixed(1));
       baroData.dom={value:btcDom,change:0};
     }
   }
@@ -812,6 +821,9 @@ async function runScan(){
     const fg=fgRes.value;
     fearGreed=fg.value;
     baroData.fg={value:fg.value,label:fg.label,change:null};
+  }else{
+    // Estimate sentiment from RSI if Fear/Greed unavailable
+    // Will be filled after historical data loads
   }
 
   // ── Parse Markets ──
@@ -823,15 +835,10 @@ async function runScan(){
     const oil=coins.find(c=>c.symbol.toUpperCase()==='USO');
     if(xrp){currentPrice=xrp.price;xrpChange=xrp.change;updatePos(xrp.price);}
     if(btc){btcChange=btc.change;}
-    // Oil via crude proxy token if available, else skip gracefully
-    const oilProxy=coins.find(c=>['UCO','OIL'].includes(c.symbol.toUpperCase()));
-    if(oilProxy){baroData.oil={price:oilProxy.price,change:oilProxy.change};}
-    else{
-      // Estimate oil signal from gold (they correlate during geopolitical events)
-      // If gold is risk-off signal, flag oil as elevated too
-      if(baroData.gold&&baroData.gold.change>1){baroData.oil={price:null,change:baroData.gold.change*0.8,estimated:true};}
-      else if(baroData.gold){baroData.oil={price:null,change:baroData.gold.change*0.5,estimated:true};}
-    }
+    // Oil: look for crude-related tokens in top 25, otherwise skip
+    const oilProxy=coins.find(c=>['UCO','OIL','CRUDE'].includes(c.symbol.toUpperCase()));
+    if(oilProxy)baroData.oil={price:oilProxy.price,change:oilProxy.change};
+    // If no oil data, baroData.oil stays unset and shows N/A gracefully
     renderCrypto(coins);
   }
 
@@ -839,6 +846,16 @@ async function runScan(){
   const riskMode=renderBaros();
 
   // ── Run Technical Analysis ──
+  // If F&G didn't load, estimate from price action
+  if(!baroData.fg&&cgMarketsRes.status==='fulfilled'){
+    const coins2=cgMarketsRes.value;
+    const losers=coins2.filter(c=>c.change<-2).length;
+    const gainers=coins2.filter(c=>c.change>2).length;
+    const sentiment=Math.round(50+(gainers-losers)/coins2.length*50);
+    const lbl=sentiment<35?'Fear':sentiment<50?'Mild Fear':sentiment<65?'Neutral':sentiment<80?'Greed':'Extreme Greed';
+    baroData.fg={value:sentiment,label:lbl+' (est.)',change:null};
+    fearGreed=sentiment;
+  }
   if(xrpHistRes.status==='fulfilled'&&btcHistRes.status==='fulfilled'&&currentPrice!==null){
     const ohlc=ohlcRes.status==='fulfilled'?ohlcRes.value:null;
     const analysis=runAnalysis(
