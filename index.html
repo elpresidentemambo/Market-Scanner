@@ -99,8 +99,8 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 .status{font-family:var(--mono);font-size:9px;color:var(--t3);text-align:center;padding:8px 0;letter-spacing:.04em}
 
 /* FAB */
-.fab{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--t1);color:var(--bg);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;padding:12px 34px;border-radius:40px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.6);z-index:40;white-space:nowrap}
-.fab:active{transform:translateX(-50%) scale(.97)}.fab:disabled{opacity:.45}
+.fab{position:fixed;bottom:16px;right:16px;transform:none;background:var(--s2);color:var(--t2);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;padding:9px 16px;border-radius:40px;border:1px solid var(--b2);cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.4);z-index:40;white-space:nowrap;transition:background .15s,color .15s}
+.fab:active{background:var(--t1);color:var(--bg);transform:scale(.97)}.fab:disabled{opacity:.4}
 
 /* Sheet */
 .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;display:none;align-items:flex-end;backdrop-filter:blur(3px)}
@@ -200,8 +200,8 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
   </div>
 
   <div class="sec-hdr" style="cursor:pointer" onclick="toggleTracker()">
-    <div class="sec-title">Signal Tracker</div>
-    <div class="sec-sub" id="trackerBadge">accuracy log</div>
+    <div class="sec-title">What I'm Learning</div>
+    <div class="sec-sub" id="trackerBadge">tap to open</div>
   </div>
   <div id="trackerPanel" style="display:none;margin-bottom:14px"></div>
 
@@ -634,9 +634,8 @@ function renderBaros(){
   BAROS.forEach(b=>{
     const d=baroData[b.key];
     if(!d){
-      const el=document.createElement('div');el.className='baro';el.style.opacity='0.4';
-      el.innerHTML='<div class="baro-top"><div class="baro-name">'+b.name+'</div><div class="baro-tag tne">N/A</div></div><div class="baro-val" style="color:var(--t3)">—</div><div class="baro-chg neu">no data</div><div class="baro-src">'+b.sub+'</div>';
-      grid.appendChild(el);return;
+      // Hide unavailable barometers entirely — no weak placeholders
+      return;
     }
     let isRisk,valStr,chgStr,chgCol;
     if(b.fmt==='pct'){
@@ -691,10 +690,13 @@ function cryptoSig(s){
 function renderCrypto(coins){
   const list=document.getElementById('cryptoList');list.innerHTML='';
   document.getElementById('cryptoCount').textContent=coins.length+' coins';
+  const STABLES_DISPLAY=['USDT','USDC','USDS','USDE','DAI','USD1','BUSD','TUSD','USDP','WBTC','WETH','PAXG'];
   coins.forEach((c,i)=>{
     const s=cryptoScore(c.change,c.vol,c.mcap),sg=cryptoSig(s.score);
     const isXrp=c.symbol.toUpperCase()==='XRP';
+    const isStable=STABLES_DISPLAY.includes(c.symbol.toUpperCase());
     const card=document.createElement('div');card.className='coin-card'+(isXrp?' xrp':'');
+    if(isStable)card.style.opacity='0.4';
     card.innerHTML=`
       <div class="cl"><div class="c-rank">${i+1}</div><div>
         <div class="c-sym" style="${isXrp?'color:var(--blue)':''}">${c.symbol.toUpperCase()}${isXrp?' ★':''}</div>
@@ -1469,9 +1471,12 @@ function runOpportunityScanner(coins, xrpAnalysisScore){
   if(!xrp)return null;
 
   // Score all coins with the crypto scoring system
+  // Filter out stablecoins, proxies and non-tradeable assets
+  const STABLES = ["USDT","USDC","USDS","USDE","DAI","USD1","BUSD","TUSD","USDP","FRAX","LUSD","SUSD","GUSD","CUSD","EURS","EURT","XAUT","PAXG","WBTC","WETH","STETH","RETH"];
   const scored = coins
     .filter(c => c.symbol.toUpperCase() !== "XRP")
-    .filter(c => !["USDT","USDC","USDS","USDE","DAI","USD1","BUSD"].includes(c.symbol.toUpperCase()))
+    .filter(c => !STABLES.includes(c.symbol.toUpperCase()))
+    .filter(c => c.mcap > 500000000)
     .map(c => {
       const s = cryptoScore(c.change, c.vol, c.mcap);
       // Estimated R:R: use 15% stop, 30% target as baseline
