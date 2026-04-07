@@ -173,12 +173,44 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
     </div>
   </div>
 
+  <div class="sec-hdr" style="cursor:pointer" onclick="toggleAlerts()">
+    <div class="sec-title">Price Alerts</div>
+    <div class="sec-sub" id="alertBadge">tap to manage</div>
+  </div>
+  <div id="alertPanel" style="display:none;margin-bottom:14px">
+    <div style="background:var(--s1);border:1px solid var(--b2);border-radius:12px;padding:13px 15px">
+      <div id="alertNotifRow" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--b1)">
+        <div style="font-size:13px;color:var(--t2)">Notifications</div>
+        <button onclick="requestNotifPerm()" id="notifBtn" style="font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:20px;border:1px solid var(--b2);background:var(--s2);color:var(--t2);cursor:pointer">ENABLE</button>
+      </div>
+      <div id="alertList"></div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <input id="alertPrice" type="number" step="0.01" placeholder="Price level e.g. 1.25" style="flex:1;font-family:var(--mono);font-size:11px;background:var(--s2);border:1px solid var(--b2);border-radius:7px;padding:7px 10px;color:var(--t1)">
+        <button onclick="addAlert()" style="font-family:var(--mono);font-size:9px;padding:7px 14px;border-radius:7px;border:1px solid var(--b2);background:var(--s2);color:var(--t1);cursor:pointer;white-space:nowrap">+ ADD</button>
+      </div>
+    </div>
+  </div>
+
   <div class="sec-hdr">
     <div class="sec-title">Analyst View</div>
     <div class="sec-sub" id="confluenceCount">9-factor analysis</div>
   </div>
   <div class="analyst-card" id="analystCard">
     <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Running 9-factor analysis...</div>
+  </div>
+
+  <div class="sec-hdr" style="cursor:pointer" onclick="toggleTracker()">
+    <div class="sec-title">Signal Tracker</div>
+    <div class="sec-sub" id="trackerBadge">accuracy log</div>
+  </div>
+  <div id="trackerPanel" style="display:none;margin-bottom:14px"></div>
+
+  <div class="sec-hdr">
+    <div class="sec-title">Opportunity Scanner</div>
+    <div class="sec-sub" id="oppSub">scanning alternatives...</div>
+  </div>
+  <div id="oppCard" style="background:var(--s1);border:1px solid var(--b2);border-radius:12px;padding:13px 15px;margin-bottom:14px">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Loading opportunity analysis...</div>
   </div>
 
   <div class="sec-hdr">
@@ -768,6 +800,786 @@ function openCryptoSheet(c,s,sg){
   openSheet();
 }
 
+
+// ── ALERT SYSTEM ─────────────────────────────────────────────────────
+const DEFAULT_ALERT_LEVELS = [
+  {id:1, label:"Stop warning",   value:1.20, direction:"below", active:true, triggered:false},
+  {id:2, label:"Support $1.28",  value:1.28, direction:"below", active:true, triggered:false},
+  {id:3, label:"Resistance",     value:1.32, direction:"above", active:true, triggered:false},
+  {id:4, label:"Take profit",    value:1.70, direction:"above", active:true, triggered:false},
+];
+
+function loadAlerts(){
+  try{
+    const saved = localStorage.getItem("xrp_alerts");
+    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_ALERT_LEVELS));
+  }catch(e){return JSON.parse(JSON.stringify(DEFAULT_ALERT_LEVELS));}
+}
+function saveAlerts(alerts){
+  try{localStorage.setItem("xrp_alerts", JSON.stringify(alerts));}catch(e){}
+}
+
+function toggleAlerts(){
+  const panel = document.getElementById("alertPanel");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+  if(panel.style.display === "block") renderAlertList();
+}
+
+function renderAlertList(){
+  const alerts = loadAlerts();
+  const el = document.getElementById("alertList");
+  const badge = document.getElementById("alertBadge");
+  const active = alerts.filter(a=>a.active).length;
+  badge.textContent = active + " active";
+
+  const notifStatus = Notification.permission === "granted" ? "Enabled" : Notification.permission === "denied" ? "Blocked" : "Click to enable";
+  document.getElementById("notifBtn").textContent = notifStatus.toUpperCase();
+  document.getElementById("notifBtn").style.color = Notification.permission === "granted" ? "var(--green)" : "var(--t2)";
+
+  if(!alerts.length){el.innerHTML = '<div style="font-size:12px;color:var(--t3);padding:4px 0">No alerts set</div>';return;}
+  el.innerHTML = alerts.map((a,i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b1)">
+      <div>
+        <div style="font-size:12px;color:${a.triggered?"var(--amber)":"var(--t1)"}">
+          ${a.label || (a.direction === "above" ? "Above" : "Below") + " $" + a.value.toFixed(2)}
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:2px">
+          ${a.direction === "above" ? "when price rises above" : "when price drops below"} $${a.value.toFixed(2)}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${a.triggered ? '<span style="font-family:var(--mono);font-size:8px;color:var(--amber)">FIRED</span>' : ""}
+        <button onclick="removeAlert(${i})" style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:6px;border:1px solid var(--b2);background:var(--s2);color:var(--red);cursor:pointer">X</button>
+      </div>
+    </div>`).join("");
+}
+
+function addAlert(){
+  const input = document.getElementById("alertPrice");
+  const val = parseFloat(input.value);
+  if(isNaN(val) || val <= 0){input.style.borderColor="var(--red)";setTimeout(()=>input.style.borderColor="var(--b2)",1500);return;}
+  const alerts = loadAlerts();
+  const currentPrice = parseFloat(document.getElementById("xrpLive").textContent.replace("$","")) || ENTRY;
+  const direction = val > currentPrice ? "above" : "below";
+  const newId = Date.now();
+  alerts.push({id:newId, label:"", value:val, direction, active:true, triggered:false});
+  saveAlerts(alerts);
+  input.value = "";
+  renderAlertList();
+}
+
+function removeAlert(idx){
+  const alerts = loadAlerts();
+  alerts.splice(idx,1);
+  saveAlerts(alerts);
+  renderAlertList();
+}
+
+function checkAlerts(price){
+  if(!price)return;
+  const alerts = loadAlerts();
+  let anyFired = false;
+  alerts.forEach(a => {
+    if(!a.active || a.triggered)return;
+    const fired = a.direction === "above" ? price >= a.value : price <= a.value;
+    if(fired){
+      a.triggered = true;
+      anyFired = true;
+      const msg = a.direction === "above"
+        ? "XRP above $" + a.value.toFixed(2) + " — " + (a.label || "alert triggered")
+        : "XRP below $" + a.value.toFixed(2) + " — " + (a.label || "alert triggered");
+      if(Notification.permission === "granted"){
+        try{new Notification("Market Scanner", {body:msg, icon:"https://cryptologos.cc/logos/xrp-xrp-logo.png"});}
+        catch(e){}
+      }
+    }
+  });
+  if(anyFired){
+    saveAlerts(alerts);
+    renderAlertList();
+  }
+  const badge = document.getElementById("alertBadge");
+  if(badge && document.getElementById("alertPanel").style.display === "none"){
+    const active = alerts.filter(a=>a.active).length;
+    badge.textContent = active + " active";
+  }
+}
+
+function requestNotifPerm(){
+  if(Notification.permission === "granted"){return;}
+  Notification.requestPermission().then(p => {
+    renderAlertList();
+    if(p === "granted"){
+      try{new Notification("Market Scanner", {body:"Alerts are now active for your XRP position"});}
+      catch(e){}
+    }
+  });
+}
+
+// Auto-check alerts every 5 minutes
+setInterval(() => {
+  const live = document.getElementById("xrpLive").textContent.replace("$","");
+  const price = parseFloat(live);
+  if(!isNaN(price))checkAlerts(price);
+}, 300000);
+
+// Init alert badge on load
+(function initAlertBadge(){
+  const alerts = loadAlerts();
+  const el = document.getElementById("alertBadge");
+  if(el)el.textContent = alerts.filter(a=>a.active).length + " active";
+})();
+
+
+
+// ── SIGNAL TRACKER & ACCURACY ENGINE ─────────────────────────────────
+
+// Storage keys
+const SKEY = "xrp_signals";
+const WKEY = "xrp_weights";
+
+// Default factor weights (adjustable by learning)
+const DEFAULT_WEIGHTS = {
+  ma: 1.0, rsi: 1.0, macd: 1.0, bb: 1.0,
+  structure: 1.0, volume: 1.0, btcCorr: 1.0, dom: 1.0, macro: 1.0
+};
+
+function loadSignals(){
+  try{ const s=localStorage.getItem(SKEY); return s?JSON.parse(s):[]; }
+  catch(e){ return []; }
+}
+function saveSignals(sigs){
+  try{ localStorage.setItem(SKEY, JSON.stringify(sigs.slice(-200))); }catch(e){}
+}
+function loadWeights(){
+  try{ const w=localStorage.getItem(WKEY); return w?JSON.parse(w):{...DEFAULT_WEIGHTS}; }
+  catch(e){ return {...DEFAULT_WEIGHTS}; }
+}
+function saveWeights(w){
+  try{ localStorage.setItem(WKEY, JSON.stringify(w)); }catch(e){}
+}
+
+// Log a signal after each scan
+function logSignal(price, verdict, action, bullCount, bearCount, rsiVal, riskMode, signals){
+  const sigs = loadSignals();
+  const entry = {
+    id: Date.now(),
+    ts: Date.now(),
+    price: parseFloat(price.toFixed(4)),
+    verdict: verdict,
+    action: action,
+    bullCount: bullCount,
+    bearCount: bearCount,
+    rsi: parseFloat(rsiVal.toFixed(1)),
+    riskMode: riskMode,
+    // Store which individual factors were bull/bear
+    factors: signals.map(s=>({label:s.label, bull:s.bull})),
+    // Outcome fields - filled in later
+    outcome24h: null,
+    outcome48h: null,
+    outcome7d: null,
+    price24h: null,
+    price48h: null,
+    price7d: null,
+    correct24h: null,
+    correct48h: null,
+    correct7d: null
+  };
+  sigs.push(entry);
+  saveSignals(sigs);
+  return entry;
+}
+
+// Check outcomes for past signals using current price
+function checkOutcomes(currentPrice){
+  const sigs = loadSignals();
+  const now = Date.now();
+  let updated = false;
+
+  sigs.forEach(sig => {
+    const hoursAgo = (now - sig.ts) / 3600000;
+    // Determine what direction the system was predicting
+    const predictedUp = ["HOLD / ADD","HOLD"].includes(sig.action) ||
+                        sig.bullCount > sig.bearCount;
+    const predictedDown = ["PROTECT","REDUCE","CAUTION"].includes(sig.action) ||
+                          sig.bearCount > sig.bullCount;
+
+    if(hoursAgo >= 24 && sig.outcome24h === null){
+      sig.price24h = parseFloat(currentPrice.toFixed(4));
+      const moved = currentPrice > sig.price;
+      sig.outcome24h = moved ? "up" : "down";
+      if(predictedUp) sig.correct24h = moved ? true : false;
+      else if(predictedDown) sig.correct24h = !moved ? true : false;
+      else sig.correct24h = null; // neutral - no prediction
+      updated = true;
+    }
+    if(hoursAgo >= 48 && sig.outcome48h === null){
+      sig.price48h = parseFloat(currentPrice.toFixed(4));
+      const moved = currentPrice > sig.price;
+      sig.outcome48h = moved ? "up" : "down";
+      if(predictedUp) sig.correct48h = moved ? true : false;
+      else if(predictedDown) sig.correct48h = !moved ? true : false;
+      else sig.correct48h = null;
+      updated = true;
+    }
+    if(hoursAgo >= 168 && sig.outcome7d === null){
+      sig.price7d = parseFloat(currentPrice.toFixed(4));
+      const moved = currentPrice > sig.price;
+      sig.outcome7d = moved ? "up" : "down";
+      if(predictedUp) sig.correct7d = moved ? true : false;
+      else if(predictedDown) sig.correct7d = !moved ? true : false;
+      else sig.correct7d = null;
+      updated = true;
+    }
+  });
+
+  if(updated){
+    saveSignals(sigs);
+    // Trigger weight adaptation
+    adaptWeights(sigs);
+  }
+  return sigs;
+}
+
+// Adaptive weighting - adjust factor weights based on outcomes
+function adaptWeights(sigs){
+  const weights = loadWeights();
+  // Only adapt when we have 20+ resolved signals
+  const resolved = sigs.filter(s => s.correct48h !== null);
+  if(resolved.length < 20) return;
+
+  // For each factor, calculate its individual accuracy
+  const factorNames = Object.keys(DEFAULT_WEIGHTS);
+  const factorCorrect = {};
+  const factorTotal = {};
+
+  resolved.forEach(sig => {
+    if(!sig.factors) return;
+    sig.factors.forEach(f => {
+      if(f.bull === null) return;
+      const key = factorKey(f.label);
+      if(!key) return;
+      if(!factorTotal[key]) { factorTotal[key]=0; factorCorrect[key]=0; }
+      factorTotal[key]++;
+      // Was this factor correct? Factor said bull AND signal was correct
+      const factorPredictedUp = f.bull === true;
+      if(sig.correct48h !== null){
+        const actuallyUp = sig.price48h > sig.price;
+        if((factorPredictedUp && actuallyUp) || (!factorPredictedUp && !actuallyUp)){
+          factorCorrect[key]++;
+        }
+      }
+    });
+  });
+
+  // Adjust weights: > 65% accuracy -> increase, < 45% -> decrease
+  Object.keys(factorTotal).forEach(key => {
+    if(factorTotal[key] < 10) return; // need enough data
+    const acc = factorCorrect[key] / factorTotal[key];
+    if(acc > 0.65) weights[key] = Math.min(1.5, (weights[key]||1) + 0.05);
+    else if(acc < 0.45) weights[key] = Math.max(0.5, (weights[key]||1) - 0.05);
+  });
+
+  saveWeights(weights);
+}
+
+// Map signal labels to weight keys
+function factorKey(label){
+  if(!label) return null;
+  const l = label.toLowerCase();
+  if(l.includes("ma") || l.includes("moving")) return "ma";
+  if(l.includes("rsi")) return "rsi";
+  if(l.includes("macd")) return "macd";
+  if(l.includes("bollinger") || l.includes("band")) return "bb";
+  if(l.includes("higher highs") || l.includes("lower highs") || l.includes("sideways")) return "structure";
+  if(l.includes("volume")) return "volume";
+  if(l.includes("btc") || l.includes("lagging") || l.includes("ratio")) return "btcCorr";
+  if(l.includes("dominance") || l.includes("dom")) return "dom";
+  if(l.includes("macro") || l.includes("risk-on") || l.includes("risk-off")) return "macro";
+  return null;
+}
+
+// Calculate accuracy stats
+function calcAccuracy(sigs){
+  const stats = {
+    total: sigs.length,
+    resolved24h: 0, correct24h: 0,
+    resolved48h: 0, correct48h: 0,
+    resolved7d: 0, correct7d: 0,
+    byAction: {},
+    byRiskMode: {},
+    recentStreak: 0
+  };
+
+  sigs.forEach(sig => {
+    // By action
+    if(!stats.byAction[sig.action]) stats.byAction[sig.action]={total:0,correct:0};
+    stats.byAction[sig.action].total++;
+
+    if(sig.correct48h !== null){
+      stats.resolved48h++;
+      if(sig.correct48h) { stats.correct48h++; stats.byAction[sig.action].correct++; }
+    }
+    if(sig.correct24h !== null){
+      stats.resolved24h++;
+      if(sig.correct24h) stats.correct24h++;
+    }
+    if(sig.correct7d !== null){
+      stats.resolved7d++;
+      if(sig.correct7d) stats.correct7d++;
+    }
+    // By risk mode
+    if(!stats.byRiskMode[sig.riskMode]) stats.byRiskMode[sig.riskMode]={total:0,correct:0};
+    stats.byRiskMode[sig.riskMode].total++;
+    if(sig.correct48h) stats.byRiskMode[sig.riskMode].correct++;
+  });
+
+  // Recent streak
+  const recent = sigs.filter(s=>s.correct48h!==null).slice(-10);
+  let streak = 0;
+  for(let i=recent.length-1;i>=0;i--){
+    if(recent[i].correct48h) streak++;
+    else break;
+  }
+  stats.recentStreak = streak;
+  return stats;
+}
+
+// ── WHAT I'M LEARNING ────────────────────────────────────────────────
+
+let trackerOpen = false;
+function toggleTracker(){
+  trackerOpen = !trackerOpen;
+  document.getElementById("trackerPanel").style.display = trackerOpen ? "block" : "none";
+  if(trackerOpen) renderTracker();
+}
+
+// Rule-based lesson generator — no sentence appears unless data earned it
+function generateLessons(sigs, factorAcc, factorTotal){
+  const lessons = [];
+  const resolved48 = sigs.filter(s => s.correct48h !== null);
+  if(resolved48.length < 5) return lessons;
+
+  // RSI lesson
+  const rsiSigs = resolved48.filter(s => s.rsi <= 32);
+  if(rsiSigs.length >= 4){
+    const rsiCorrect48 = rsiSigs.filter(s => s.correct48h).length / rsiSigs.length;
+    const rsiCorrect24 = rsiSigs.filter(s => s.correct24h).length / Math.max(1, rsiSigs.filter(s => s.correct24h !== null).length);
+    if(rsiCorrect48 > rsiCorrect24 + 0.1)
+      lessons.push("RSI oversold appears more useful at 48h than at 24h");
+    else if(rsiCorrect48 >= 0.65)
+      lessons.push("RSI extremes have been aligning with hold logic more than immediate reversal");
+    else if(rsiCorrect48 < 0.45)
+      lessons.push("RSI oversold has been earlier than expected — worth patience before acting");
+  }
+
+  // MACD lesson
+  const macdAcc = factorAcc["macd"];
+  const macdTotal = factorTotal["macd"];
+  if(macdTotal >= 5){
+    if(macdAcc < 0.45)
+      lessons.push("MACD crossover has added caution more often than timing precision");
+    else if(macdAcc >= 0.65)
+      lessons.push("MACD crossover is starting to look more reliable than expected");
+    else
+      lessons.push("MACD is producing mixed evidence — more sample needed");
+  }
+
+  // Fear/Greed lesson
+  const fgSigs = resolved48.filter(s => {
+    const fg = s.factors && s.factors.find(f => f.label && f.label.toLowerCase().includes("fear"));
+    return fg && fg.bull === true;
+  });
+  if(fgSigs.length >= 4){
+    const fgCorrect = fgSigs.filter(s => s.correct48h).length / fgSigs.length;
+    if(fgCorrect >= 0.6)
+      lessons.push("Extreme fear has been aligning with hold logic more than immediate entry timing");
+    else
+      lessons.push("Fear and Greed has been useful for context, less so for precise timing");
+  }
+
+  // BTC dominance lesson
+  const domAcc = factorAcc["dom"];
+  const domTotal = factorTotal["dom"];
+  if(domTotal >= 5){
+    if(domAcc >= 0.6)
+      lessons.push("BTC dominance rises have been aligning with weaker alt follow-through");
+    else
+      lessons.push("BTC dominance signal is still building evidence");
+  }
+
+  // Volume lesson
+  const volAcc = factorAcc["volume"];
+  const volTotal = factorTotal["volume"];
+  if(volTotal >= 6 && volAcc < 0.48)
+    lessons.push("Volume signals have been noisy — useful in combination, less so alone");
+
+  // Multi-signal lesson
+  if(resolved48.length >= 15){
+    const highConf = resolved48.filter(s => s.bullCount >= 4 || s.bearCount >= 4);
+    const highConfCorrect = highConf.filter(s => s.correct48h).length;
+    if(highConf.length >= 5 && highConfCorrect / highConf.length >= 0.65)
+      lessons.push("Higher confluence signals have been more reliable than mixed readings");
+  }
+
+  return lessons.slice(0, 4);
+}
+
+// Time horizon breakdown
+function getTimeHorizonInsights(sigs){
+  const byFactor = {};
+  const timeframes = ["24h", "48h", "7d"];
+  const correctKey = {h24:"correct24h", h48:"correct48h", h7d:"correct7d"};
+
+  timeframes.forEach(tf => {
+    const key = "correct" + tf.replace("h","h").replace("7d","7d");
+    const resolved = sigs.filter(s => s[key] !== null);
+    if(resolved.length < 3) return;
+
+    // Find which factors dominate correct calls at this timeframe
+    const factorScores = {};
+    resolved.forEach(sig => {
+      if(!sig.factors) return;
+      sig.factors.forEach(f => {
+        if(f.bull === null) return;
+        const k = factorKey(f.label);
+        if(!k) return;
+        if(!factorScores[k]) factorScores[k] = {correct:0, total:0};
+        factorScores[k].total++;
+        const actualCorrect = sig[key];
+        const factorPredictedUp = f.bull;
+        const actualUp = tf === "24h" ? sig.price24h > sig.price :
+                         tf === "48h" ? sig.price48h > sig.price :
+                         sig.price7d > sig.price;
+        if(actualCorrect !== null && ((factorPredictedUp && actualUp) || (!factorPredictedUp && !actualUp)))
+          factorScores[k].correct++;
+      });
+    });
+
+    const best = Object.entries(factorScores)
+      .filter(([,v]) => v.total >= 3)
+      .sort((a,b) => b[1].correct/b[1].total - a[1].correct/a[1].total)
+      .slice(0,2)
+      .map(([k]) => k);
+
+    if(best.length) byFactor[tf] = best;
+  });
+  return byFactor;
+}
+
+// Factor accuracy calculator (returns per-factor acc + total)
+function calcFactorAccuracy(sigs){
+  const acc = {}, total = {};
+  const resolved = sigs.filter(s => s.correct48h !== null);
+  resolved.forEach(sig => {
+    if(!sig.factors) return;
+    sig.factors.forEach(f => {
+      if(f.bull === null) return;
+      const k = factorKey(f.label);
+      if(!k) return;
+      if(!total[k]) { total[k]=0; acc[k]=0; }
+      total[k]++;
+      const actualUp = sig.price48h > sig.price;
+      const factorUp = f.bull === true;
+      if((factorUp && actualUp) || (!factorUp && !actualUp)) acc[k]++;
+    });
+  });
+  const rates = {};
+  Object.keys(total).forEach(k => rates[k] = total[k] > 0 ? acc[k]/total[k] : 0.5);
+  return {rates, total};
+}
+
+function renderTracker(){
+  const el = document.getElementById("trackerPanel");
+  const sigs = loadSignals();
+  const weights = loadWeights();
+  const resolved48 = sigs.filter(s => s.correct48h !== null).length;
+  const resolved24 = sigs.filter(s => s.correct24h !== null).length;
+  const resolved7d = sigs.filter(s => s.correct7d !== null).length;
+
+  // Phase determination
+  let phase, phaseNote;
+  if(resolved48 < 20){
+    phase = "Observational mode";
+    phaseNote = "Collecting outcomes and watching which signals genuinely help. Reweighting has not started yet.";
+  } else if(resolved48 < 50){
+    phase = "Early learning";
+    phaseNote = "Early patterns are appearing. Factor influence is adjusting lightly.";
+  } else {
+    phase = "Adaptive active";
+    phaseNote = "Enough history exists to meaningfully adapt which factors matter most.";
+  }
+
+  // Last calibration time
+  const lastSig = sigs[sigs.length-1];
+  const lastTime = lastSig ? new Date(lastSig.ts).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}) : "--:--";
+
+  // Factor accuracy
+  const {rates, total} = calcFactorAccuracy(sigs);
+
+  // Sort factors into growing trust vs still messy
+  const factorNames = {
+    ma:"Moving averages", rsi:"RSI extremes", macd:"MACD crossover",
+    bb:"Bollinger bands", structure:"Market structure", volume:"Volume logic",
+    btcCorr:"BTC correlation", dom:"BTC dominance", macro:"Macro / risk mode"
+  };
+  const growing = [], messy = [];
+  Object.entries(weights).forEach(([k,w]) => {
+    const name = factorNames[k] || k;
+    const t = total[k] || 0;
+    const r = rates[k];
+    if(t < 4){
+      messy.push({name, status:"limited sample", symbol:"?"});
+    } else if(w >= 1.05 || (r !== undefined && r >= 0.60)){
+      growing.push({name, status: r >= 0.70 ? "consistently useful" : "starting to look stronger", symbol:"↑"});
+    } else if(w <= 0.95 || (r !== undefined && r < 0.45)){
+      messy.push({name, status: r < 0.40 ? "not earning trust yet" : "mixed evidence", symbol:"↓"});
+    } else {
+      messy.push({name, status:"still proving itself", symbol:"↔"});
+    }
+  });
+
+  // Today's verdict ingredients (from last signal with factors)
+  const lastWithFactors = [...sigs].reverse().find(s => s.factors && s.factors.length);
+  let todayHTML = "";
+  if(lastWithFactors && lastWithFactors.factors){
+    const bull = lastWithFactors.factors.filter(f => f.bull === true).slice(0,3);
+    const bear = lastWithFactors.factors.filter(f => f.bull === false).slice(0,3);
+    const rows = [
+      ...bear.map(f => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t2)">${f.label}</span><span style="font-family:var(--mono);font-size:10px;color:var(--red)">bearish influence</span></div>`),
+      ...bull.map(f => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t2)">${f.label}</span><span style="font-family:var(--mono);font-size:10px;color:var(--green)">bullish offset</span></div>`)
+    ];
+    todayHTML = rows.join("");
+  }
+
+  // Time horizon
+  const horizons = getTimeHorizonInsights(sigs);
+  const horizonRows = ["24h","48h","7d"].map(tf => {
+    const factors = horizons[tf];
+    const val = factors ? factors.join(", ") : "still building";
+    const col = factors ? "var(--t1)" : "var(--t3)";
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t3);font-family:var(--mono)">${tf}</span><span style="color:${col}">${val}</span></div>`;
+  }).join("");
+
+  // Rule-based lessons
+  const lessons = generateLessons(sigs, rates, total);
+
+  // Weight changes
+  const weightRows = Object.entries(weights).map(([k,v]) => {
+    const diff = v - 1.0;
+    const sym = diff > 0.03 ? "↑" : diff < -0.03 ? "↓" : "—";
+    const col = diff > 0.03 ? "var(--green)" : diff < -0.03 ? "var(--red)" : "var(--t3)";
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px">
+      <span style="color:var(--t2)">${factorNames[k]||k}</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="width:60px;height:2px;background:var(--s3);border-radius:1px;overflow:hidden">
+          <div style="height:100%;width:${Math.min(100,Math.max(0,Math.round((v-0.5)*100)))}%;background:${col};border-radius:1px"></div>
+        </div>
+        <span style="font-family:var(--mono);font-size:10px;color:${col};width:12px;text-align:center">${sym}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Overall accuracy
+  const total48 = sigs.filter(s=>s.correct48h!==null).length;
+  const correct48 = sigs.filter(s=>s.correct48h===true).length;
+  const overallAcc = total48 >= 5 ? Math.round(correct48/total48*100)+"%" : "building";
+  const accCol = total48 < 5 ? "var(--t3)" : correct48/total48 >= 0.65 ? "var(--green)" : correct48/total48 >= 0.5 ? "var(--amber)" : "var(--red)";
+
+  el.innerHTML = `
+    <div style="background:var(--s1);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:13px 15px;margin-bottom:8px">
+
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--purple);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px">What I'm Learning</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t2)">${phase}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--mono);font-size:18px;color:${accCol}">${overallAcc}</div>
+          <div style="font-size:9px;color:var(--t3)">${total48} resolved</div>
+        </div>
+      </div>
+
+      <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--b1)">${phaseNote}</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:12px">
+        <div style="background:var(--s2);border-radius:7px;padding:8px 9px">
+          <div style="font-size:9px;color:var(--t3);margin-bottom:2px">Resolved signals</div>
+          <div style="font-family:var(--mono);font-size:13px">${resolved48} / ${resolved48 < 20 ? "20 (unlock)" : resolved48 < 50 ? "50 (full)" : "50+"}</div>
+        </div>
+        <div style="background:var(--s2);border-radius:7px;padding:8px 9px">
+          <div style="font-size:9px;color:var(--t3);margin-bottom:2px">Last update</div>
+          <div style="font-family:var(--mono);font-size:13px">${lastTime}</div>
+        </div>
+      </div>
+
+      ${growing.length ? `
+      <div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Growing trust</div>
+      ${growing.map(f=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1)">
+        <div style="font-size:12px;color:var(--t1)">${f.name}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--green)">${f.symbol} ${f.status}</div>
+      </div>`).join("")}
+      <div style="margin-bottom:12px"></div>` : ""}
+
+      ${messy.length ? `
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Still messy</div>
+      ${messy.map(f=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1)">
+        <div style="font-size:12px;color:var(--t2)">${f.name}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">${f.symbol} ${f.status}</div>
+      </div>`).join("")}
+      <div style="margin-bottom:12px"></div>` : ""}
+
+      ${todayHTML ? `
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Today's verdict leaned on</div>
+      ${todayHTML}
+      <div style="margin-bottom:12px"></div>` : ""}
+
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Where signals are helping</div>
+      ${horizonRows}
+      <div style="margin-bottom:12px"></div>
+
+      ${lessons.length ? `
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Recent lessons</div>
+      ${lessons.map(l=>`<div style="padding:5px 0;border-bottom:1px solid var(--b1);font-size:12px;color:var(--t2);line-height:1.5">${l}</div>`).join("")}
+      <div style="margin-bottom:12px"></div>` : `
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Recent lessons</div>
+      <div style="font-size:12px;color:var(--t3);padding:4px 0">Not enough resolved signals yet. Lessons appear once the data earns them.</div>
+      <div style="margin-bottom:12px"></div>`}
+
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Weight changes</div>
+      ${weightRows}
+
+      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:10px;color:var(--t3)">${sigs.length} total signals · ${resolved48} resolved</div>
+        <button onclick="clearSignals()" style="font-family:var(--mono);font-size:8px;padding:4px 10px;border-radius:6px;border:1px solid var(--b2);background:var(--s2);color:var(--red);cursor:pointer">RESET</button>
+      </div>
+    </div>`;
+}
+
+function clearSignals(){
+  if(!confirm("Reset all signal history and factor weights?")) return;
+  localStorage.removeItem(SKEY);
+  localStorage.removeItem(WKEY);
+  renderTracker();
+}
+
+// ── OPPORTUNITY SCANNER ───────────────────────────────────────────────
+function runOpportunityScanner(coins, xrpAnalysisScore){
+  const xrp = coins.find(c => c.symbol.toUpperCase() === "XRP");
+  if(!xrp)return null;
+
+  // Score all coins with the crypto scoring system
+  const scored = coins
+    .filter(c => c.symbol.toUpperCase() !== "XRP")
+    .filter(c => !["USDT","USDC","USDS","USDE","DAI","USD1","BUSD"].includes(c.symbol.toUpperCase()))
+    .map(c => {
+      const s = cryptoScore(c.change, c.vol, c.mcap);
+      // Estimated R:R: use 15% stop, 30% target as baseline
+      const estStop = c.price * 0.85;
+      const estTarget = c.price * 1.30;
+      const risk = c.price - estStop;
+      const reward = estTarget - c.price;
+      const rr = reward / risk;
+      return {...c, rawScore:s.score, rr:parseFloat(rr.toFixed(2))};
+    })
+    .sort((a,b) => b.rawScore - a.rawScore);
+
+  const xrpScore = cryptoScore(xrp.change, xrp.vol, xrp.mcap);
+  const xrpRisk = xrp.price - STOP;
+  const xrpReward = TARGET - xrp.price;
+  const xrpRR = xrpReward / xrpRisk;
+  const top3 = scored.slice(0,3);
+  const bestAlt = scored[0];
+
+  // Switching cost analysis
+  const currentPnL = (xrp.price - ENTRY) * UNITS;
+  const switchingCost = 0.01 * xrp.price * UNITS; // ~1% spread/fee estimate
+  const scoreDiff = bestAlt ? bestAlt.rawScore - xrpScore.score : 0;
+
+  // Verdict logic
+  let verdict, verdictColor, verdictEmoji, reason;
+
+  if(!bestAlt || xrpScore.score >= bestAlt.rawScore){
+    verdict = "HOLD XRP — best setup available";
+    verdictColor = "var(--green)";
+    verdictEmoji = "✅";
+    reason = "XRP currently has the strongest signal of the alternatives. Stay put.";
+  } else if(scoreDiff < 2 || xrpRR >= 1.8){
+    verdict = "HOLD XRP — edge too small to switch";
+    verdictColor = "var(--green)";
+    verdictEmoji = "✅";
+    reason = bestAlt.symbol.toUpperCase() + " scores higher but the difference does not justify switching costs and losing your defined stop/target.";
+  } else if(scoreDiff >= 4 && bestAlt.rr >= 2.0){
+    verdict = "WATCH " + bestAlt.symbol.toUpperCase() + " — strong alternative";
+    verdictColor = "var(--amber)";
+    verdictEmoji = "👀";
+    reason = bestAlt.symbol.toUpperCase() + " has significantly stronger momentum. Consider this only if XRP breaks $1.28 support.";
+  } else {
+    verdict = "MONITOR " + bestAlt.symbol.toUpperCase();
+    verdictColor = "var(--amber)";
+    verdictEmoji = "🔍";
+    reason = "Slightly stronger signal elsewhere but not enough to act. Reassess if XRP loses $1.28.";
+  }
+
+  return{verdict, verdictColor, verdictEmoji, reason, xrpScore:xrpScore.score, xrpRR:parseFloat(xrpRR.toFixed(2)), top3, bestAlt, scoreDiff, currentPnL};
+}
+
+function renderOpportunity(opp){
+  const el = document.getElementById("oppCard");
+  const sub = document.getElementById("oppSub");
+  if(!opp){
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Need market data to scan</div>';
+    return;
+  }
+
+  sub.textContent = "vs " + opp.top3.map(c=>c.symbol.toUpperCase()).join(", ");
+
+  const altRows = opp.top3.map(c => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b1)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--t1)">${c.symbol.toUpperCase()}</div>
+        <div style="font-size:11px;color:var(--t3)">${c.name}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--mono);font-size:11px;color:${c.change>=0?"var(--green)":"var(--red)"}">${c.change>=0?"+":""}${c.change.toFixed(2)}%</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3)">score ${c.rawScore}</div>
+      </div>
+    </div>`).join("");
+
+  const pnlStr = opp.currentPnL >= 0 ? "+$" + opp.currentPnL.toFixed(2) : "-$" + Math.abs(opp.currentPnL).toFixed(2);
+  const scoreDiffStr = opp.scoreDiff > 0 ? "+" + opp.scoreDiff.toFixed(1) : opp.scoreDiff.toFixed(1);
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-size:22px;line-height:1;flex-shrink:0">${opp.verdictEmoji}</div>
+      <div>
+        <div style="font-size:13px;font-weight:500;color:${opp.verdictColor};line-height:1.3">${opp.verdict}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px">${opp.reason}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+      <div style="background:var(--s2);border-radius:7px;padding:8px 9px">
+        <div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">XRP signal</div>
+        <div style="font-family:var(--mono);font-size:14px;margin-top:3px">${opp.xrpScore}</div>
+      </div>
+      <div style="background:var(--s2);border-radius:7px;padding:8px 9px">
+        <div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">XRP R:R</div>
+        <div style="font-family:var(--mono);font-size:14px;margin-top:3px;color:${opp.xrpRR>=2?"var(--green)":"var(--amber)"}">1:${opp.xrpRR}</div>
+      </div>
+      <div style="background:var(--s2);border-radius:7px;padding:8px 9px">
+        <div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Best alt score</div>
+        <div style="font-family:var(--mono);font-size:14px;margin-top:3px;color:${opp.scoreDiff>2?"var(--amber)":"var(--t1)"}">${opp.bestAlt?opp.bestAlt.rawScore:"—"} <span style="font-size:10px">(${scoreDiffStr})</span></div>
+      </div>
+      <div style="background:var(--s2);border-radius:7px;padding:8px 9px">
+        <div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Your XRP P&L</div>
+        <div style="font-family:var(--mono);font-size:14px;margin-top:3px;color:${opp.currentPnL>=0?"var(--green)":"var(--red)"}">${pnlStr}</div>
+      </div>
+    </div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Top alternatives right now</div>
+    ${altRows}
+    <div style="margin-top:10px;font-size:10px;color:var(--t3);line-height:1.5">Note: Alternative R:R uses estimated 15% stop and 30% target. Always verify levels before acting.</div>`;
+}
+
 // ── Main Scan ─────────────────────────────────────────────────────────
 async function runScan(){
   const fab=document.getElementById('fab'),status=document.getElementById('statusMsg');
@@ -840,6 +1652,12 @@ async function runScan(){
     if(oilProxy)baroData.oil={price:oilProxy.price,change:oilProxy.change};
     // If no oil data, baroData.oil stays unset and shows N/A gracefully
     renderCrypto(coins);
+    // Run opportunity scanner
+    const xrpAnalysis = document.getElementById("confluenceCount").textContent;
+    const oppResult = runOpportunityScanner(coins, 0);
+    renderOpportunity(oppResult);
+    // Check price alerts
+    if(xrp)checkAlerts(xrp.price);
   }
 
   // ── Render Barometers & Risk ──
@@ -863,6 +1681,21 @@ async function runScan(){
       riskMode,currentPrice,xrpChange||0,btcChange,btcDom,fearGreed
     );
     renderAnalyst(analysis);
+    // Log signal for accuracy tracking
+    logSignal(currentPrice, analysis.pattern, analysis.action,
+              analysis.bullCount, analysis.bearCount,
+              analysis.rsiVal, riskMode, analysis.signals);
+    // Check outcomes of past signals
+    checkOutcomes(currentPrice);
+    // Update tracker badge
+    const sigs = loadSignals();
+    const resolved = sigs.filter(s=>s.correct48h!==null);
+    const correct = resolved.filter(s=>s.correct48h).length;
+    const badgeEl = document.getElementById("trackerBadge");
+    if(badgeEl){
+      if(resolved.length===0) badgeEl.textContent = sigs.length + " logged, building...";
+      else badgeEl.textContent = Math.round(correct/resolved.length*100) + "% accurate (" + resolved.length + " resolved)";
+    }
   }else{
     document.getElementById('analystCard').innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Historical data unavailable</div>';
     document.getElementById('confluenceCount').textContent='data unavailable';
