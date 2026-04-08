@@ -141,7 +141,8 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
       <div class="rb-label" id="rbLabel">SCANNING...</div>
       <div class="rb-dots" id="rbDots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     </div>
-    <div class="rb-sigs" id="rbSigs">Fetching safe-haven signals...</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px" id="rbMode">WHAT THIS MEANS</div>
+    <div class="rb-sigs" id="rbSigs">Fetching signals...</div>
     <div class="rb-action" id="rbAction"></div>
   </div>
 
@@ -202,7 +203,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
   </div>
 
   <div class="sec-hdr" style="cursor:pointer" onclick="toggleTracker()">
-    <div class="sec-title">What I'm Learning</div>
+    <div class="sec-title">What I\'m Learning</div>
     <div class="sec-sub" id="trackerBadge">tap to open</div>
   </div>
   <div id="trackerPanel" style="display:block;margin-bottom:14px"></div>
@@ -614,12 +615,34 @@ function updateRisk(){
   document.getElementById('rbLabel').textContent={calm:'RISK-ON',caution:'CAUTION',riskoff:'RISK-OFF'}[mode];
   let dots='';for(let i=0;i<5;i++)dots+=`<div class="dot${i<n?' on':''}"></div>`;
   document.getElementById('rbDots').innerHTML=dots;
-  document.getElementById('rbSigs').textContent=n===0?'No safe-haven signals. Markets calm.':'Active: '+sigs.join(' · ');
-  document.getElementById('rbAction').textContent={
-    calm:'→ Crypto and growth assets have tailwind. XRP environment supportive.',
-    caution:'→ Mixed signals. Watch XRP $1.28 support closely.',
-    riskoff:'→ Risk-off active. Defensive posture recommended.'
-  }[mode];
+  // Plain English signal explanations
+  const sigExplain = {
+    'Gold +': 'Gold rising — investors buying safety',
+    'Oil +':  'Oil surging — geopolitical tension rising',
+    'JPY strengthening': 'Japanese Yen strengthening — classic fear signal',
+    'CHF strengthening': 'Swiss Franc strengthening — classic fear signal',
+    'BTC sell-off': 'Bitcoin selling off — crypto risk appetite falling'
+  };
+  let sigText = '';
+  if(n === 0){
+    sigText = 'No fear signals active. Markets calm.';
+  } else {
+    const explained = sigs.map(s => {
+      for(const [key, val] of Object.entries(sigExplain)){
+        if(s.startsWith(key)) return val;
+      }
+      return s;
+    });
+    sigText = explained.join(' · ');
+  }
+  document.getElementById('rbSigs').textContent = sigText;
+
+  const actions = {
+    calm:    '→ Good environment for XRP. Growth assets have tailwind.',
+    caution: '→ One or two warning signs active. Watch $1.28 support. No panic needed.',
+    riskoff: '→ Multiple fear signals firing. Money moving to safety. Your stop at $1.11 is protecting you.'
+  };
+  document.getElementById('rbAction').textContent = actions[mode];
   return mode;
 }
 
@@ -685,8 +708,9 @@ function cryptoScore(change,vol,mcap){
   if(change>0&&ratio>5)conv=2;else if(change<0&&ratio>5)conv=-1;
   return{score:parseFloat((m+vs+conv).toFixed(2)),vs:parseFloat(vs.toFixed(2)),conv,ratio:parseFloat(ratio.toFixed(3)),m:parseFloat(m.toFixed(2))};
 }
-function cryptoSig(s){
-  if(s>8)return{l:'STRONG BUY',c:'bsb'};
+function cryptoSig(s, change){
+  const extended = change !== undefined && change > 10;
+  if(s>8)return extended?{l:'STRONG BUY+',c:'bsb',ext:true}:{l:'STRONG BUY',c:'bsb'};
   if(s>4)return{l:'BUY',c:'bb'};
   if(s>0)return{l:'WATCH',c:'bw'};
   if(s>-4)return{l:'AVOID',c:'ba'};
@@ -699,7 +723,7 @@ function renderCrypto(coins){
   const displayCoins=coins.filter(c=>!HIDE_LIST.includes(c.symbol.toUpperCase()));
   document.getElementById('cryptoCount').textContent=displayCoins.length+' assets';
   displayCoins.forEach((c,i)=>{
-    const s=cryptoScore(c.change,c.vol,c.mcap),sg=cryptoSig(s.score);
+    const s=cryptoScore(c.change,c.vol,c.mcap),sg=cryptoSig(s.score,c.change);
     const isXrp=c.symbol.toUpperCase()==='XRP';
     const card=document.createElement('div');card.className='coin-card'+(isXrp?' xrp':'');
     card.innerHTML=`
@@ -711,6 +735,7 @@ function renderCrypto(coins){
         <div class="c-chg ${pc(c.change)}">${pct(c.change)}</div>
       </div><div style="min-width:68px;text-align:right">
         <div class="badge ${sg.c}">${sg.l}</div>
+        ${sg.ext?'<div style="font-family:var(--mono);font-size:8px;color:var(--amber);margin-top:2px">chase risk</div>':''}
         <div class="sc">${s.score}</div>
       </div></div>`;
     card.onclick=()=>openCryptoSheet(c,s,sg);
@@ -1305,11 +1330,9 @@ function renderTracker(){
   const el = document.getElementById("trackerPanel");
   const sigs = loadSignals();
   const weights = loadWeights();
-  const resolved48 = sigs.filter(s => s.correct48h !== null).length;
-  const resolved24 = sigs.filter(s => s.correct24h !== null).length;
-  const resolved7d = sigs.filter(s => s.correct7d !== null).length;
+  const resolved48 = sigs.filter(function(s){return s.correct48h !== null;}).length;
+  const resolved24 = sigs.filter(function(s){return s.correct24h !== null;}).length;
 
-  // Phase determination
   let phase, phaseNote;
   if(resolved48 < 20){
     phase = "Observational mode";
@@ -1322,150 +1345,150 @@ function renderTracker(){
     phaseNote = "Enough history exists to meaningfully adapt which factors matter most.";
   }
 
-  // Last calibration time
   const lastSig = sigs[sigs.length-1];
   const lastTime = lastSig ? new Date(lastSig.ts).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}) : "--:--";
 
-  // Factor accuracy
-  const {rates, total} = calcFactorAccuracy(sigs);
+  const factorAcc = calcFactorAccuracy(sigs);
+  const rates = factorAcc.rates;
+  const total = factorAcc.total;
 
-  // Sort factors into growing trust vs still messy
   const factorNames = {
     ma:"Moving averages", rsi:"RSI extremes", macd:"MACD crossover",
     bb:"Bollinger bands", structure:"Market structure", volume:"Volume logic",
     btcCorr:"BTC correlation", dom:"BTC dominance", macro:"Macro / risk mode"
   };
+
   const growing = [], messy = [];
-  Object.entries(weights).forEach(([k,w]) => {
+  Object.entries(weights).forEach(function(entry){
+    const k = entry[0], w = entry[1];
     const name = factorNames[k] || k;
     const t = total[k] || 0;
     const r = rates[k];
     if(t < 4){
-      messy.push({name, status:"limited sample", symbol:"?"});
+      messy.push({name:name, status:"limited sample", symbol:"?"});
     } else if(w >= 1.05 || (r !== undefined && r >= 0.60)){
-      growing.push({name, status: r >= 0.70 ? "consistently useful" : "starting to look stronger", symbol:"↑"});
+      messy.push({name:name, status: r >= 0.70 ? "consistently useful" : "starting to look stronger", symbol:"↑"});
     } else if(w <= 0.95 || (r !== undefined && r < 0.45)){
-      messy.push({name, status: r < 0.40 ? "not earning trust yet" : "mixed evidence", symbol:"↓"});
+      messy.push({name:name, status: r < 0.40 ? "not earning trust yet" : "mixed evidence", symbol:"↓"});
     } else {
-      messy.push({name, status:"still proving itself", symbol:"↔"});
+      messy.push({name:name, status:"still proving itself", symbol:"↔"});
     }
   });
 
-  // Today's verdict ingredients (from last signal with factors)
-  const lastWithFactors = [...sigs].reverse().find(s => s.factors && s.factors.length);
+  const lastWithFactors = sigs.slice().reverse().find(function(s){return s.factors && s.factors.length;});
   let todayHTML = "";
   if(lastWithFactors && lastWithFactors.factors){
-    const bull = lastWithFactors.factors.filter(f => f.bull === true).slice(0,3);
-    const bear = lastWithFactors.factors.filter(f => f.bull === false).slice(0,3);
-    const rows = [
-      ...bear.map(f => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t2)">${f.label}</span><span style="font-family:var(--mono);font-size:10px;color:var(--red)">bearish influence</span></div>`),
-      ...bull.map(f => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t2)">${f.label}</span><span style="font-family:var(--mono);font-size:10px;color:var(--green)">bullish offset</span></div>`)
-    ];
+    const bull = lastWithFactors.factors.filter(function(f){return f.bull === true;}).slice(0,3);
+    const bear = lastWithFactors.factors.filter(function(f){return f.bull === false;}).slice(0,3);
+    const rows = bear.map(function(f){
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t2)">'+f.label+'</span><span style="font-family:var(--mono);font-size:10px;color:var(--red)">bearish influence</span></div>';
+    }).concat(bull.map(function(f){
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t2)">'+f.label+'</span><span style="font-family:var(--mono);font-size:10px;color:var(--green)">bullish offset</span></div>';
+    }));
     todayHTML = rows.join("");
   }
 
-  // Time horizon
   const horizons = getTimeHorizonInsights(sigs);
-  const horizonRows = ["24h","48h","7d"].map(tf => {
+  const horizonRows = ["24h","48h","7d"].map(function(tf){
     const factors = horizons[tf];
     const val = factors ? factors.join(", ") : "still building";
     const col = factors ? "var(--t1)" : "var(--t3)";
-    return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t3);font-family:var(--mono)">${tf}</span><span style="color:${col}">${val}</span></div>`;
+    return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b1);font-size:12px"><span style="color:var(--t3);font-family:var(--mono)">'+tf+'</span><span style="color:'+col+'">'+val+'</span></div>';
   }).join("");
 
-  // Rule-based lessons
   const lessons = generateLessons(sigs, rates, total);
 
-  // Weight changes
-  const weightRows = Object.entries(weights).map(([k,v]) => {
+  const weightRows = Object.entries(weights).map(function(entry){
+    const k = entry[0], v = entry[1];
     const diff = v - 1.0;
     const sym = diff > 0.03 ? "↑" : diff < -0.03 ? "↓" : "—";
     const col = diff > 0.03 ? "var(--green)" : diff < -0.03 ? "var(--red)" : "var(--t3)";
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px">
-      <span style="color:var(--t2)">${factorNames[k]||k}</span>
-      <div style="display:flex;align-items:center;gap:6px">
-        <div style="width:60px;height:2px;background:var(--s3);border-radius:1px;overflow:hidden">
-          <div style="height:100%;width:${Math.min(100,Math.max(0,Math.round((v-0.5)*100)))}%;background:${col};border-radius:1px"></div>
-        </div>
-        <span style="font-family:var(--mono);font-size:10px;color:${col};width:12px;text-align:center">${sym}</span>
-      </div>
-    </div>`;
+    const barW = Math.min(100,Math.max(0,Math.round((v-0.5)*100)));
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:11px"><span style="color:var(--t2);min-width:110px">'+(factorNames[k]||k)+'</span><div style="display:flex;align-items:center;gap:6px"><div style="width:50px;height:2px;background:var(--s3);border-radius:1px;overflow:hidden"><div style="height:100%;width:'+barW+'%;background:'+col+';border-radius:1px"></div></div><span style="font-family:var(--mono);font-size:10px;color:'+col+';width:12px;text-align:center">'+sym+'</span></div></div>';
   }).join("");
 
-  // Overall accuracy
-  const total48 = sigs.filter(s=>s.correct48h!==null).length;
-  const correct48 = sigs.filter(s=>s.correct48h===true).length;
+  const weightSection = resolved48 >= 20
+    ? '<div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Weight changes</div>' + weightRows
+    : '<div style="font-size:11px;color:var(--t3);padding:8px 0;border-top:1px solid var(--b1)">Weight adjustments begin once 20 outcomes are resolved.</div>';
+
+  const total48 = resolved48;
+  const correct48 = sigs.filter(function(s){return s.correct48h===true;}).length;
   const overallAcc = total48 >= 5 ? Math.round(correct48/total48*100)+"%" : "building";
-  const accCol = total48 < 5 ? "var(--t3)" : correct48/total48 >= 0.65 ? "var(--green)" : correct48/total48 >= 0.5 ? "var(--amber)" : "var(--red)";
+  const accColor = total48 < 5 ? "var(--t3)" : correct48/total48 >= 0.65 ? "var(--green)" : correct48/total48 >= 0.5 ? "var(--amber)" : "var(--red)";
 
-  el.innerHTML = `
-    <div style="background:var(--s1);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:13px 15px;margin-bottom:8px">
+  const growingHTML = growing.length ? (
+    '<div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Growing trust</div>' +
+    growing.map(function(f){
+      return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1)"><div style="font-size:12px;color:var(--t1)">'+f.name+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--green)">'+f.symbol+' '+f.status+'</div></div>';
+    }).join("") + '<div style="margin-bottom:12px"></div>'
+  ) : "";
 
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
-        <div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--purple);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px">What I'm Learning</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--t2)">${phase}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:var(--mono);font-size:18px;color:${accCol}">${overallAcc}</div>
-          <div style="font-size:9px;color:var(--t3)">${total48} resolved</div>
-        </div>
-      </div>
+  const messyHTML = messy.length ? (
+    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Still messy</div>' +
+    messy.map(function(f){
+      return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1)"><div style="font-size:12px;color:var(--t2)">'+f.name+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--t3)">'+f.symbol+' '+f.status+'</div></div>';
+    }).join("") + '<div style="margin-bottom:12px"></div>'
+  ) : "";
 
-      <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--b1)">${phaseNote}</div>
+  const todaySectionHTML = todayHTML ? (
+    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Today\'s verdict leaned on</div>' +
+    todayHTML + '<div style="margin-bottom:12px"></div>'
+  ) : "";
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:12px">
-        <div style="background:var(--s2);border-radius:7px;padding:8px 9px">
-          <div style="font-size:9px;color:var(--t3);margin-bottom:2px">Resolved signals</div>
-          <div style="font-family:var(--mono);font-size:13px">${resolved48} / ${resolved48 < 20 ? "20 (unlock)" : resolved48 < 50 ? "50 (full)" : "50+"}</div>
-        </div>
-        <div style="background:var(--s2);border-radius:7px;padding:8px 9px">
-          <div style="font-size:9px;color:var(--t3);margin-bottom:2px">Last update</div>
-          <div style="font-family:var(--mono);font-size:13px">${lastTime}</div>
-        </div>
-      </div>
+  const lessonsHTML = lessons.length ? (
+    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Recent lessons</div>' +
+    lessons.map(function(l){return '<div style="padding:5px 0;border-bottom:1px solid var(--b1);font-size:12px;color:var(--t2);line-height:1.5">'+l+'</div>';}).join("") +
+    '<div style="margin-bottom:12px"></div>'
+  ) : (
+    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Recent lessons</div>' +
+    '<div style="font-size:12px;color:var(--t3);padding:4px 0">Not enough resolved signals yet. Lessons appear once the data earns them.</div>' +
+    '<div style="margin-bottom:12px"></div>'
+  );
 
-      ${growing.length ? `
-      <div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Growing trust</div>
-      ${growing.map(f=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1)">
-        <div style="font-size:12px;color:var(--t1)">${f.name}</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green)">${f.symbol} ${f.status}</div>
-      </div>`).join("")}
-      <div style="margin-bottom:12px"></div>` : ""}
-
-      ${messy.length ? `
-      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Still messy</div>
-      ${messy.map(f=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1)">
-        <div style="font-size:12px;color:var(--t2)">${f.name}</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">${f.symbol} ${f.status}</div>
-      </div>`).join("")}
-      <div style="margin-bottom:12px"></div>` : ""}
-
-      ${todayHTML ? `
-      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Today's verdict leaned on</div>
-      ${todayHTML}
-      <div style="margin-bottom:12px"></div>` : ""}
-
-      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Where signals are helping</div>
-      ${horizonRows}
-      <div style="margin-bottom:12px"></div>
-
-      ${lessons.length ? `
-      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Recent lessons</div>
-      ${lessons.map(l=>`<div style="padding:5px 0;border-bottom:1px solid var(--b1);font-size:12px;color:var(--t2);line-height:1.5">${l}</div>`).join("")}
-      <div style="margin-bottom:12px"></div>` : `
-      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Recent lessons</div>
-      <div style="font-size:12px;color:var(--t3);padding:4px 0">Not enough resolved signals yet. Lessons appear once the data earns them.</div>
-      <div style="margin-bottom:12px"></div>`}
-
-      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Weight changes</div>
-      ${weightRows}
-
-      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:10px;color:var(--t3)">${sigs.length} total signals · ${resolved48} resolved</div>
-        <button onclick="clearSignals()" style="font-family:var(--mono);font-size:8px;padding:4px 10px;border-radius:6px;border:1px solid var(--b2);background:var(--s2);color:var(--red);cursor:pointer">RESET</button>
-      </div>
-    </div>`;
+  el.innerHTML =
+    '<div style="background:var(--s1);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:13px 15px;margin-bottom:8px">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">' +
+        '<div>' +
+          '<div style="font-family:var(--mono);font-size:9px;color:var(--purple);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px">What I\'m Learning</div>' +
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--t2)">' + phase + '</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          '<div style="font-family:var(--mono);font-size:11px;color:' + accColor + ';font-weight:500">' + overallAcc + '</div>' +
+          '<div style="font-size:9px;color:var(--t3);margin-top:2px">' + total48 + ' outcomes resolved</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--b1)">' + phaseNote + '</div>' +
+      '<div style="background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<div style="font-size:9px;color:var(--t3)">Signals logged</div>' +
+          '<div style="font-family:var(--mono);font-size:12px;color:var(--t1)">' + sigs.length + '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<div style="font-size:9px;color:var(--t3)">Resolved outcomes</div>' +
+          '<div style="font-family:var(--mono);font-size:12px;color:' + (resolved48>0?'var(--t1)':'var(--t3)') + '">' + resolved48 + '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+          '<div style="font-size:9px;color:var(--t3)">Adaptation unlocks at</div>' +
+          '<div style="font-family:var(--mono);font-size:12px;color:var(--purple)">20 resolved</div>' +
+        '</div>' +
+        '<div style="height:3px;background:var(--s3);border-radius:2px;overflow:hidden">' +
+          '<div style="height:100%;width:' + Math.min(100,Math.round(resolved48/20*100)) + '%;background:var(--purple);border-radius:2px"></div>' +
+        '</div>' +
+        '<div style="font-size:9px;color:var(--t3);margin-top:4px;text-align:right">Last update: ' + lastTime + '</div>' +
+      '</div>' +
+      growingHTML +
+      messyHTML +
+      todaySectionHTML +
+      '<div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Where signals are helping</div>' +
+      horizonRows +
+      '<div style="margin-bottom:12px"></div>' +
+      lessonsHTML +
+      weightSection +
+      '<div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">' +
+        '<div style="font-size:10px;color:var(--t3)">' + sigs.length + ' total signals · ' + resolved48 + ' resolved</div>' +
+        '<button onclick="clearSignals()" style="font-family:var(--mono);font-size:8px;padding:4px 10px;border-radius:6px;border:1px solid var(--b2);background:var(--s2);color:var(--red);cursor:pointer">RESET</button>' +
+      '</div>' +
+    '</div>';
 }
 
 function clearSignals(){
@@ -1715,8 +1738,8 @@ async function runScan(){
     const correct = resolved.filter(s=>s.correct48h).length;
     const badgeEl = document.getElementById("trackerBadge");
     if(badgeEl){
-      if(resolved.length===0) badgeEl.textContent = sigs.length + " logged, building...";
-      else badgeEl.textContent = Math.round(correct/resolved.length*100) + "% accurate (" + resolved.length + " resolved)";
+      if(resolved.length===0) badgeEl.textContent = sigs.length + " logged · 0 resolved";
+      else badgeEl.textContent = Math.round(correct/resolved.length*100) + "% · " + resolved.length + " resolved";
     }
   }else{
     document.getElementById('analystCard').innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Historical data unavailable</div>';
