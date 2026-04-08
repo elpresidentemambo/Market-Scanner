@@ -141,7 +141,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
       <div class="rb-label" id="rbLabel">SCANNING...</div>
       <div class="rb-dots" id="rbDots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     </div>
-    <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px" id="rbMode">WHAT THIS MEANS</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.06em;margin-bottom:4px" id="rbMode">Market regime: scanning...</div>
     <div class="rb-sigs" id="rbSigs">Fetching signals...</div>
     <div class="rb-action" id="rbAction"></div>
   </div>
@@ -203,7 +203,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
   </div>
 
   <div class="sec-hdr" style="cursor:pointer" onclick="toggleTracker()">
-    <div class="sec-title">What I\'m Learning</div>
+    <div class="sec-title">What I'm Learning</div>
     <div class="sec-sub" id="trackerBadge">tap to open</div>
   </div>
   <div id="trackerPanel" style="display:block;margin-bottom:14px"></div>
@@ -228,7 +228,10 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 
   <div class="sec-hdr">
     <div class="sec-title">Crypto</div>
-    <div class="sec-sub" id="cryptoCount">top 25</div>
+    <div style="text-align:right">
+      <div class="sec-sub" id="cryptoCount">top 25</div>
+      <div style="font-family:var(--mono);font-size:8px;color:var(--amber);margin-top:2px" id="cryptoRegimeNote"></div>
+    </div>
   </div>
   <div id="cryptoList">
     <div class="skel h48" style="margin-bottom:4px"></div>
@@ -643,7 +646,16 @@ function updateRisk(){
     riskoff: '→ Multiple fear signals firing. Money moving to safety. Your stop at $1.11 is protecting you.'
   };
   document.getElementById('rbAction').textContent = actions[mode];
-  return mode;
+  const modeEl = document.getElementById('rbMode');
+  if(modeEl){
+    const stanceMap = {
+      calm:    'Market regime: Risk-On - growth assets supported',
+      caution: 'Market regime: Caution - one or more fear signals active',
+      riskoff: 'Market regime: Risk-Off - multiple fear signals firing'
+    };
+    modeEl.textContent = stanceMap[mode];
+  }
+  // regime label already updated above  return mode;
 }
 
 // ── Barometers ────────────────────────────────────────────────────────
@@ -698,7 +710,15 @@ function renderBaros(){
     el.onclick=()=>openBaroSheet(b,d,isRisk);
     grid.appendChild(el);
   });
-  return updateRisk();
+  const mode = updateRisk();
+  // Update crypto section label based on regime
+  const cryptoHdr = document.getElementById('cryptoRegimeNote');
+  if(cryptoHdr){
+    if(mode === 'riskoff') cryptoHdr.textContent = 'BUY signals capped in risk-off regime';
+    else if(mode === 'caution') cryptoHdr.textContent = 'caution regime active';
+    else cryptoHdr.textContent = '';
+  }
+  return mode;
 }
 
 // ── Crypto Scoring ────────────────────────────────────────────────────
@@ -710,7 +730,13 @@ function cryptoScore(change,vol,mcap){
 }
 function cryptoSig(s, change){
   const extended = change !== undefined && change > 10;
-  if(s>8)return extended?{l:'STRONG BUY+',c:'bsb',ext:true}:{l:'STRONG BUY',c:'bsb'};
+  // Regime cap: check current macro environment
+  const riskMode = (document.getElementById('riskBanner')||{}).className||'';
+  const isRiskOff = riskMode.includes('riskoff');
+  if(s>8)return extended?{l:'EXTENDED',c:'bw',ext:true}:{l:'STRONG BUY',c:'bsb'};
+  if(s>5&&extended)return{l:'CHASE RISK',c:'bw',ext:true};
+  // In risk-off, cap at WATCH unless score is exceptional (>8 handled above)
+  if(isRiskOff&&s>4)return{l:'BUY*',c:'bb',capped:true};
   if(s>4)return{l:'BUY',c:'bb'};
   if(s>0)return{l:'WATCH',c:'bw'};
   if(s>-4)return{l:'AVOID',c:'ba'};
@@ -736,6 +762,7 @@ function renderCrypto(coins){
       </div><div style="min-width:68px;text-align:right">
         <div class="badge ${sg.c}">${sg.l}</div>
         ${sg.ext?'<div style="font-family:var(--mono);font-size:8px;color:var(--amber);margin-top:2px">chase risk</div>':''}
+        ${sg.capped?'<div style="font-family:var(--mono);font-size:8px;color:var(--amber);margin-top:2px">risk-off cap</div>':''}
         <div class="sc">${s.score}</div>
       </div></div>`;
     card.onclick=()=>openCryptoSheet(c,s,sg);
@@ -1365,7 +1392,7 @@ function renderTracker(){
     const t = total[k] || 0;
     const r = rates[k];
     if(t < 4){
-      messy.push({name:name, status:"limited sample", symbol:"?"});
+      messy.push({name:name, status:"too early to judge", symbol:"?"});
     } else if(w >= 1.05 || (r !== undefined && r >= 0.60)){
       messy.push({name:name, status: r >= 0.70 ? "consistently useful" : "starting to look stronger", symbol:"↑"});
     } else if(w <= 0.95 || (r !== undefined && r < 0.45)){
@@ -1424,7 +1451,7 @@ function renderTracker(){
   ) : "";
 
   const messyHTML = messy.length ? (
-    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Still messy</div>' +
+    '<div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Too early to judge</div>' +
     messy.map(function(f){
       return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1)"><div style="font-size:12px;color:var(--t2)">'+f.name+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--t3)">'+f.symbol+' '+f.status+'</div></div>';
     }).join("") + '<div style="margin-bottom:12px"></div>'
